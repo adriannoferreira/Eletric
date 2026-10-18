@@ -3,7 +3,6 @@
 import { ChevronRight, Plus, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
-import { TIPOS_CIRCUITO } from "@/lib/eletrica/tipos";
 
 const TOM = { ok: "ok", info: "ok", aviso: "aviso", erro: "perigo" } as const;
 const ROTULO = { ok: "OK", info: "OK", aviso: "Atenção", erro: "Corrigir" } as const;
@@ -22,7 +21,7 @@ export function PainelCircuitos({
     <div className="space-y-3">
       {analise.circuitos.length === 0 && (
         <p className="rounded-xl bg-surface-2 p-4 text-sm text-muted">
-          Nenhum circuito ainda. Adicione o primeiro — o app sugere o cabo e o disjuntor e já coloca a peça no quadro.
+          Nenhum circuito ainda.
         </p>
       )}
       <ul className="space-y-2">
@@ -32,26 +31,16 @@ export function PainelCircuitos({
               onClick={() => aoAbrir(r.circuito.id)}
               className="card flex w-full items-center gap-3 p-3 text-left transition hover:border-accent"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-sm font-bold">{i + 1}</span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-sm font-bold">{i + 1}</span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <p className="truncate font-semibold">{r.circuito.nome}</p>
                   {r.temDR && <ShieldCheck className="size-4 shrink-0 text-ok" aria-label="Protegido por DR" />}
                 </div>
-                <p className="text-xs text-muted">
-                  {TIPOS_CIRCUITO[r.circuito.tipo].split(" (")[0]} · {n(r.circuito.potenciaW, 0)} W · {r.tensaoV} V
+                <p className="truncate text-xs text-muted">
+                  {n(r.circuito.potenciaW, 0)} W · <b className="text-fg">{r.dim.secao ? n(r.dim.secao) : "?"} mm²</b> ·{" "}
+                  <b className="text-fg">{r.pecaDisjuntor ? r.pecaDisjuntor.rotulo : "sem disj."}</b>
                   {r.fases.length > 0 && ` · ${r.fases.join("+")}`}
-                </p>
-                <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-                  <span><b>{n(r.dim.ib)}</b> A</span>
-                  <span>cabo <b>{r.dim.secao ? n(r.dim.secao) : "?"}</b> mm²</span>
-                  <span>
-                    disj. <b>{r.pecaDisjuntor ? r.pecaDisjuntor.rotulo : "—"}</b>
-                    {r.dim.disjuntor && (!r.pecaDisjuntor || r.pecaDisjuntor.correnteNominal !== r.dim.disjuntor) && (
-                      <span className="text-muted"> (sug. {r.dim.disjuntor} A)</span>
-                    )}
-                  </span>
-                  <span>queda <b>{n(r.dim.quedaPct, 2)}</b>%</span>
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">

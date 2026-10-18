@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Printer, Shuffle, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, Printer, Shuffle, X } from "lucide-react";
+import { Detalhes, MenuAcoes, Ref } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import {
   ajustarFasesAoPente,
@@ -204,12 +205,25 @@ export function PainelLigacoes({
         )}
       </section>
 
-      <section className="space-y-2">
-        <h3 className="font-semibold">Cores dos cabos</h3>
-        <p className="text-xs text-muted">
-          NBR 5410 6.1.5.3: neutro azul-claro e PE verde-amarelo (ou verde) são obrigatórios; as fases podem ter qualquer outra cor
-          — mantenha o mesmo padrão em toda a obra.
-        </p>
+      <Detalhes
+        className="shadow-none"
+        titulo={
+          <span className="flex items-center gap-2">
+            Cores dos cabos
+            <span className="flex gap-1">
+              {(["R", "S", "T", "N", "PE"] as const).map((k) => (
+                <Bolinha key={k} cor={cfg.cores[k]} />
+              ))}
+            </span>
+          </span>
+        }
+      >
+        <div className="mb-2">
+          <Ref norma="NBR 5410" item="6.1.5.3">
+            Neutro azul-claro e PE verde-amarelo (ou verde) são obrigatórios; as fases podem ter qualquer outra cor — mantenha o mesmo
+            padrão em toda a obra.
+          </Ref>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(["R", "S", "T", "retorno"] as const).map((k) => (
             <label key={k} className="flex items-center gap-2 rounded-xl border border-border p-2 text-sm">
@@ -242,14 +256,12 @@ export function PainelLigacoes({
             Voltar às cores padrão
           </button>
         )}
-      </section>
+      </Detalhes>
 
       <section className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">Lista de ligações (montagem)</h3>
-          <a href={`/quadros/${id}/imprimir?doc=ligacoes`} target="_blank" className="btn btn-secondary py-1.5 text-sm">
-            <Printer className="size-4" /> Imprimir
-          </a>
+          <h3 className="font-semibold">Montagem</h3>
+          <MenuAcoes acoes={[{ rotulo: "Imprimir lista de ligações", icone: <Printer className="size-4" />, href: `/quadros/${id}/imprimir?doc=ligacoes`, externo: true }]} />
         </div>
         <div className="flex items-center gap-2 text-sm">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
@@ -296,12 +308,23 @@ export function TabelaLigacoes({
   let i = 0;
   return (
     <div className="space-y-3">
-      {etapas.map((et) => (
-        <div key={et} className="break-inside-avoid">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{et}</p>
+      {etapas.map((et) => {
+        const daEtapa = ligacoes.filter((l) => l.etapa === et);
+        const feitasEtapa = daEtapa.filter((l) => feitas.has(l.id)).length;
+        const tela = Boolean(aoMarcar);
+        return (
+        <details key={et} open={!tela || feitasEtapa < daEtapa.length} className="group break-inside-avoid">
+          <summary className="mb-1 flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted [&::-webkit-details-marker]:hidden">
+            <span className="flex-1">{et}</span>
+            {tela && (
+              <span className={feitasEtapa === daEtapa.length ? "text-ok" : ""}>
+                {feitasEtapa}/{daEtapa.length}
+              </span>
+            )}
+            {tela && <ChevronDown className="size-3.5 transition group-open:rotate-180" />}
+          </summary>
           <ul className="divide-y divide-border rounded-xl border border-border">
-            {ligacoes
-              .filter((l) => l.etapa === et)
+            {daEtapa
               .map((l) => {
                 i++;
                 return (
@@ -333,17 +356,18 @@ export function TabelaLigacoes({
                         </span>
                         {feitas.has(l.id) && <CheckCircle2 className="size-3.5 text-ok" />}
                       </span>
-                      <span className="block pl-7 text-xs">
+                      <span className={`block pl-7 text-xs ${aoMarcar && selecionada !== l.id ? "truncate" : ""}`}>
                         {l.deTexto} → {l.paraTexto}
                       </span>
-                      <span className="block pl-7 text-[11px] text-muted">{l.terminal}</span>
+                      {(!aoMarcar || selecionada === l.id) && <span className="block pl-7 text-[11px] text-muted">{l.terminal}</span>}
                     </button>
                   </li>
                 );
               })}
           </ul>
-        </div>
-      ))}
+        </details>
+        );
+      })}
     </div>
   );
 }

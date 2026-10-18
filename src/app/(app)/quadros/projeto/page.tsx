@@ -20,8 +20,8 @@ export default async function ProjetoObraPage({ searchParams }: PageProps<"/quad
   return (
     <>
       <Cabecalho
-        titulo={inicial ? "Editar dados da obra" : "Gerar projeto da obra"}
-        subtitulo="Informe a obra, os ambientes e as cargas — o app monta circuitos, quadro, proteções e demanda pela NBR 5410"
+        titulo={inicial ? "Dados da obra" : "Projeto da obra"}
+        ajuda="Informe a obra, os ambientes e as cargas — o app monta circuitos, quadro, proteções e demanda pela NBR 5410."
         voltar={inicial ? `/quadros/${inicial.id}` : "/quadros"}
       />
       <AssistenteProjeto

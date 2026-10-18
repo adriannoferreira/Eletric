@@ -1,8 +1,7 @@
 "use client";
 
 import { listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
-import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Printer, Save, Sparkles, Tags, X } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Pencil, Printer, Save, Sparkles, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { salvarMemorial } from "@/app/(app)/quadros/actions";
 import { Sk } from "@/components/skeleton";
@@ -16,7 +15,7 @@ import { dadosMemorialDoQuadro } from "@/lib/eletrica/memorial-quadro";
 import { EXIGENCIAS_DOCUMENTOS, montarMemorialDescritivo, preencherMemorial } from "@/lib/normas/equatorial-pa";
 import type { ClienteResumo, PerfilResumo } from "./laudo-art";
 import { ListaMateriais } from "./materiais";
-import { MenuMais, SeloRef } from "./mini";
+import { Ajuda, Detalhes, MenuAcoes, Ref } from "@/components/divulgacao";
 import { BlocoPadraoEquatorial } from "./padrao-equatorial";
 import { BlocoDemanda, demandaDoQuadro, descreverObra, ListaSeguranca, TabelaCargas } from "./projeto-blocos";
 import { descreverQuadro } from "./revisao-ia";
@@ -49,11 +48,8 @@ export function PainelProjeto({
   nome,
   dados,
   analise,
-  alterado,
   aoMudarMemorial,
   aoMudarConcessionaria,
-  aoVerUnifilar,
-  botaoOrcamento,
   cliente,
   perfil,
 }: {
@@ -61,11 +57,8 @@ export function PainelProjeto({
   nome: string;
   dados: QuadroDados;
   analise: AnaliseQuadro;
-  alterado: boolean;
   aoMudarMemorial: (m: QuadroDados["memorial"]) => void;
   aoMudarConcessionaria: (id: string) => void;
-  aoVerUnifilar: () => void;
-  botaoOrcamento: React.ReactNode;
   cliente: ClienteResumo;
   perfil: PerfilResumo;
 }) {
@@ -156,40 +149,17 @@ export function PainelProjeto({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <a
-          href={`/quadros/${id}/imprimir?auto=1`}
-          target="_blank"
-          className="btn btn-primary"
-          onClick={(e) => {
-            if (alterado && !confirm("Há alterações não salvas — o PDF usa a versão salva. Continuar?")) e.preventDefault();
-          }}
-        >
-          <FileDown className="size-4" /> Exportar PDF
-        </a>
-        <button onClick={aoVerUnifilar} className="btn btn-secondary">
-          <GitBranch className="size-4" /> Unifilar em tela cheia
-        </button>
-        {botaoOrcamento}
-        <a href={`/quadros/${id}/imprimir?doc=etiquetas`} target="_blank" className="btn btn-secondary">
-          <Tags className="size-4" /> Etiquetas
-        </a>
-        {dados.projeto ? (
-          <Link href={`/quadros/projeto?quadro=${id}`} className="btn btn-secondary">
-            <Pencil className="size-4" /> Editar dados da obra
-          </Link>
-        ) : null}
-      </div>
+    <div className="space-y-3">
+      {dados.projeto && (
+        <div className="-mb-3 flex justify-end">
+          <MenuAcoes acoes={[{ rotulo: "Editar dados da obra", icone: <Pencil className="size-4" />, href: `/quadros/projeto?quadro=${id}` }]} />
+        </div>
+      )}
 
       {!dados.projeto && (
-        <div className="space-y-2 rounded-xl bg-info-soft p-3 text-sm text-info">
-          <p>
-            Quadro montado do zero: a demanda abaixo é calculada pelos circuitos que você criou. Ambientes não foram
-            informados — use o “Gerar projeto da obra” quando quiser a previsão completa pela NBR 5410.
-          </p>
-          <label className="flex flex-wrap items-center gap-2 text-fg">
-            <span className="font-medium">Concessionária:</span>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-muted">Concessionária</span>
             <select
               value={concessionariaDoQuadro(dados)}
               onChange={(e) => aoMudarConcessionaria(e.target.value)}
@@ -202,6 +172,10 @@ export function PainelProjeto({
               ))}
             </select>
           </label>
+          <Ajuda titulo="Quadro montado do zero">
+            A demanda é calculada pelos circuitos que você criou. Para a previsão completa pela NBR 5410 (por ambiente), use
+            “Gerar projeto da obra”.
+          </Ajuda>
         </div>
       )}
 
@@ -210,7 +184,7 @@ export function PainelProjeto({
       </Secao>
 
       {demanda.equatorial && (
-        <Secao titulo="Padrão de entrada (Equatorial PA)">
+        <Secao titulo="Padrão de entrada (Equatorial PA)" aberto>
           <BlocoPadraoEquatorial padrao={demanda.equatorial} quadroId={id} disjuntorQdcA={geralDoQuadro(dados)} />
         </Secao>
       )}
@@ -219,7 +193,6 @@ export function PainelProjeto({
         <div className="overflow-x-auto rounded-xl border border-border bg-surface p-2">
           <Unifilar dados={dados} analise={analise} />
         </div>
-        <p className="mt-1 text-xs text-muted">Role para o lado no celular. Bolinhas: fases (R vermelha, S azul, T cinza).</p>
       </Secao>
 
       <Secao titulo="Quadro de cargas">
@@ -234,13 +207,13 @@ export function PainelProjeto({
         <ListaMateriais itens={materiais} />
       </Secao>
 
-      <Secao titulo="Memorial descritivo">
+      <Secao titulo="Memorial descritivo" aberto>
         <div className="space-y-3">
           {dadosMem && (
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
               {exigeFormato ? "Obrigatório para a Equatorial neste quadro." : "A Equatorial não exige memorial para unidade individual em BT."}
-              <SeloRef titulo="Memorial não exigido para unidade individual em baixa tensão">NT.00001 5.2</SeloRef>
-              <SeloRef titulo="Obrigatório para micro/minigeração distribuída">NT.00020 5.13</SeloRef>
+              <Ref norma="NT.00001" item="5.2">Memorial não exigido para unidade individual em baixa tensão.</Ref>
+              <Ref norma="NT.00020" item="5.13">Obrigatório para micro/minigeração distribuída.</Ref>
             </p>
           )}
           {exigeFormato && (
@@ -251,7 +224,7 @@ export function PainelProjeto({
               <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
                 {EXIGENCIAS_DOCUMENTOS.filter((e) => (dadosMem!.temGeracao ? e.ref.includes("NT.00020") : e.ref.includes("NT.00042"))).map((e, i) => (
                   <li key={i}>
-                    {e.texto} <SeloRef>{e.ref}</SeloRef>
+                    {e.texto} <Ref norma={e.ref} />
                   </li>
                 ))}
                 <li>A4, assinado, digitalizado (até 5 MB), arquivo “Memorial Técnico Descritivo”.</li>
@@ -273,14 +246,14 @@ export function PainelProjeto({
               </button>
             )}
             {memorial && !gerando && rascunho == null && (
-              <MenuMais>
-                <button onClick={() => setRascunho(memorial)} className="btn btn-ghost">
-                  <Pencil className="size-4" /> Editar texto
-                </button>
-                <button onClick={dadosMem ? gerarEquatorial : gerar} disabled={analise.circuitos.length === 0} className="btn btn-ghost">
-                  <Sparkles className="size-4" /> Gerar de novo
-                </button>
-              </MenuMais>
+              <MenuAcoes
+                acoes={[
+                  { rotulo: "Editar texto", icone: <Pencil className="size-4" />, onClick: () => setRascunho(memorial) },
+                  ...(analise.circuitos.length
+                    ? [{ rotulo: "Gerar de novo", icone: <Sparkles className="size-4" />, onClick: dadosMem ? gerarEquatorial : gerar }]
+                    : []),
+                ]}
+              />
             )}
           </div>
           {dados.memorial && !texto && rascunho == null && (
@@ -335,14 +308,11 @@ export function PainelProjeto({
   );
 }
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Secao({ titulo, children, aberto = false }: { titulo: string; children: React.ReactNode; aberto?: boolean }) {
   return (
-    <section>
-      <h3 className="mb-2 flex items-center gap-2 font-semibold">
-        <ClipboardList className="size-4 text-accent" /> {titulo}
-      </h3>
+    <Detalhes titulo={titulo} aberto={aberto} className="shadow-none">
       {children}
-    </section>
+    </Detalhes>
   );
 }
 

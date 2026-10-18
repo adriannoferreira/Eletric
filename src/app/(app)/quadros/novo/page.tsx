@@ -10,7 +10,7 @@ export default async function NovoQuadroPage({ searchParams }: PageProps<"/quadr
   const lista = await db.select({ id: clientes.id, nome: clientes.nome }).from(clientes).orderBy(asc(clientes.nome));
   return (
     <>
-      <Cabecalho titulo="Novo quadro" subtitulo="Escolha o fornecimento e o tamanho da caixa" voltar="/quadros" />
+      <Cabecalho titulo="Novo quadro" voltar="/quadros" />
       <FormNovoQuadro clientes={lista} clienteInicial={typeof cliente === "string" ? cliente : ""} />
     </>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { salvarProjetoObra } from "@/app/(app)/quadros/actions";
 import type { ObraExtraidaT } from "@/app/api/ia/extrair-obra/route";
+import { Conferir, MaisOpcoes, Ref } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import { analisarQuadro } from "@/lib/eletrica/calculo";
 import { CONCESSIONARIAS, concessionaria } from "@/lib/eletrica/concessionarias";
@@ -212,10 +213,10 @@ export function AssistenteProjeto({
             }}
           />
           <section className="card grid gap-4 p-4 md:grid-cols-2">
-            <Campo rotulo="Nome do projeto/quadro">
+            <Campo rotulo="Nome do quadro">
               <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: QDC Casa da Maria" className="input" />
             </Campo>
-            <Campo rotulo="Cliente (opcional)">
+            <Campo rotulo="Cliente">
               <select value={clienteId ?? ""} onChange={(e) => setClienteId(Number(e.target.value) || null)} className="input">
                 <option value="">— sem cliente —</option>
                 {clientes.map((c) => (
@@ -234,7 +235,7 @@ export function AssistenteProjeto({
                 <option value="outro">Outro</option>
               </select>
             </Campo>
-            <Campo rotulo="Concessionária" dica={concessionaria(projeto.obra.concessionaria).norma}>
+            <Campo rotulo="Concessionária" ajuda={concessionaria(projeto.obra.concessionaria).norma}>
               <select
                 value={projeto.obra.concessionaria}
                 onChange={(e) => {
@@ -253,7 +254,7 @@ export function AssistenteProjeto({
             </Campo>
             <Campo
               rotulo="Tensão da rede"
-              dica={concessionaria(projeto.obra.concessionaria).tensaoConferir ? "Tensão usual da região — conferir com a concessionária" : undefined}
+              ajuda={concessionaria(projeto.obra.concessionaria).tensaoConferir ? "Tensão usual da região — conferir com a concessionária." : undefined}
             >
               <div className="grid grid-cols-2 gap-2">
                 {(["127/220", "220/380"] as const).map((t) => (
@@ -267,7 +268,10 @@ export function AssistenteProjeto({
                 ))}
               </div>
             </Campo>
-            <Campo rotulo="Esquema de aterramento" dica="TN-C-S é o usual com padrão da concessionária">
+            <div className="md:col-span-2">
+              <MaisOpcoes>
+                <div className="grid gap-4 md:grid-cols-2">
+            <Campo rotulo="Esquema de aterramento" ajuda="TN-C-S é o usual com padrão da concessionária.">
               <select value={projeto.obra.esquema} onChange={(e) => setObra({ esquema: e.target.value as Obra["esquema"] })} className="input">
                 <option value="TN-C-S">TN-C-S (neutro aterrado no padrão)</option>
                 <option value="TN-S">TN-S</option>
@@ -286,7 +290,7 @@ export function AssistenteProjeto({
                 <option value="trifasico">Trifásico</option>
               </select>
             </Campo>
-            <Campo rotulo="Disjuntor do padrão existente (A)" dica="Opcional">
+            <Campo rotulo="Disjuntor do padrão existente (A)">
               <input
                 inputMode="numeric"
                 value={projeto.obra.disjuntorExistenteA ?? ""}
@@ -303,7 +307,7 @@ export function AssistenteProjeto({
                 ))}
               </select>
             </Campo>
-            <Campo rotulo="Circuitos por eletroduto (típico)" dica="Afeta a capacidade dos cabos (Tabela 42)">
+            <Campo rotulo="Circuitos por eletroduto" ajuda="Afeta a capacidade dos cabos (NBR 5410, Tabela 42).">
               <input
                 type="number"
                 min={1}
@@ -314,14 +318,14 @@ export function AssistenteProjeto({
             </Campo>
             <label className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 text-sm">
               <input type="checkbox" checked={projeto.obra.drEmTodos} onChange={(e) => setObra({ drEmTodos: e.target.checked })} className="size-5 accent-[var(--accent)]" />
-              Proteger todos os circuitos com DR (recomendado). Desmarcado: só os obrigatórios.
+              DR em todos os circuitos
             </label>
             <label className="flex items-center gap-3 rounded-xl bg-surface-2 p-3 text-sm">
               <input type="checkbox" checked={projeto.obra.entradaAerea} onChange={(e) => setObra({ entradaAerea: e.target.checked })} className="size-5 accent-[var(--accent)]" />
               Entrada de energia aérea (DPS exigido)
             </label>
             <div className="space-y-2 rounded-xl bg-surface-2 p-3 md:col-span-2">
-              <p className="text-sm font-medium">Caixa do quadro (o app escolhe o menor tamanho que caiba com a reserva)</p>
+              <p className="text-sm font-medium">Caixa do quadro (tamanho automático)</p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <select value={projeto.obra.caixaInstalacao} onChange={(e) => setObra({ caixaInstalacao: e.target.value as Obra["caixaInstalacao"], caixaId: null })} className="input" aria-label="Instalação da caixa">
                   <option value="embutir">De embutir</option>
@@ -346,6 +350,9 @@ export function AssistenteProjeto({
             <Campo rotulo="Observações da obra" className="md:col-span-2">
               <textarea value={projeto.obra.observacoes} onChange={(e) => setObra({ observacoes: e.target.value })} rows={2} className="input" />
             </Campo>
+                </div>
+              </MaisOpcoes>
+            </div>
           </section>
         </>
       )}
@@ -433,10 +440,10 @@ export function AssistenteProjeto({
             );
           })}
           {projeto.ambientes.length === 0 && <p className="card p-6 text-center text-sm text-muted">Adicione os cômodos da obra acima.</p>}
-          <p className="text-xs text-muted">
-            Mínimos da NBR 5410 9.5.2: iluminação 100 VA até 6 m² + 60 VA a cada 4 m² inteiros; tomadas por perímetro (3,5 m em
-            cozinhas/áreas de serviço, 5 m nos demais); 600 VA nas primeiras tomadas de banheiros, cozinhas e áreas de serviço.
-          </p>
+          <Ref norma="NBR 5410" item="9.5.2">
+            Mínimos: iluminação 100 VA até 6 m² + 60 VA a cada 4 m² inteiros; tomadas por perímetro (3,5 m em cozinhas/áreas de
+            serviço, 5 m nos demais); 600 VA nas primeiras tomadas de banheiros, cozinhas e áreas de serviço.
+          </Ref>
         </section>
       )}
 
@@ -522,7 +529,7 @@ export function AssistenteProjeto({
             );
           })}
           {projeto.cargas.length === 0 && <p className="card p-6 text-center text-sm text-muted">Chuveiros, ar-condicionado, forno… adicione acima.</p>}
-          <p className="text-xs text-muted">Potências típicas de referência — confira sempre a placa do aparelho.</p>
+          <Conferir itens={["Potências típicas de referência — confira sempre a placa do aparelho."]} />
         </section>
       )}
 
@@ -697,7 +704,7 @@ function DescreverComIA({ iaLigada, aoPreencher }: { iaLigada: boolean; aoPreenc
     <section className="card space-y-3 border-accent/40 p-4">
       <div className="flex items-center gap-2">
         <Wand2 className="size-5 text-accent" />
-        <h3 className="font-semibold">Atalho: descreva a obra e a IA preenche</h3>
+        <h3 className="font-semibold">Descreva a obra e a IA preenche</h3>
       </div>
       <textarea
         value={texto}
@@ -707,14 +714,13 @@ function DescreverComIA({ iaLigada, aoPreencher }: { iaLigada: boolean; aoPreenc
         className="input"
       />
       {!iaLigada && (
-        <p className="text-xs text-warn">A IA está desligada (falta a chave ANTHROPIC_API_KEY). Preencha as etapas manualmente — o resto funciona.</p>
+        <p className="text-xs text-warn">IA desligada — preencha as etapas manualmente.</p>
       )}
       {msg && <p className="text-sm text-danger">{msg}</p>}
       <button onClick={extrair} disabled={carregando || texto.trim().length < 10} className="btn btn-primary">
         {carregando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
         Preencher com IA
       </button>
-      <p className="text-xs text-muted">Você revisa tudo nas próximas etapas antes de gerar o quadro.</p>
     </section>
   );
 }

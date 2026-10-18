@@ -1,5 +1,6 @@
 "use client";
 
+import { Conferir, MaisOpcoes } from "@/components/divulgacao";
 import { Check, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Campo } from "@/components/ui";
@@ -146,7 +147,7 @@ export function SeletorCaixa({
   const opcoesFileiras = [...new Set(filtrarCaixas({ padrao: padrao || null }).map((c) => c.fileiras))].sort((a, b) => a - b);
   const opcoesModulos = [...new Set(filtrarCaixas({ padrao: padrao || null }).map((c) => c.modulosPorFileira))].sort((a, b) => a - b);
   const capacidades = [...new Set(filtrarCaixas({ padrao: padrao || null }).map((c) => c.capacidade))].sort((a, b) => a - b);
-  const visiveis = verTodos ? lista : lista.slice(0, 24);
+  const visiveis = verTodos ? lista : lista.slice(0, 6);
 
   const sel = "input py-2 text-sm";
 
@@ -194,6 +195,18 @@ export function SeletorCaixa({
                 <option key={v} value={v}>{r}</option>
               ))}
             </select>
+            <select className={sel} value={capMin} onChange={(e) => setCapMin(Number(e.target.value))} aria-label="Capacidade mínima">
+              <option value={0}>Qualquer capacidade</option>
+              {capacidades.map((c) => (
+                <option key={c} value={c}>≥ {c} {padrao === "NEMA" ? "disjuntores" : "módulos"}</option>
+              ))}
+            </select>
+            <span className="flex items-center gap-1.5 text-xs text-muted">
+              <SlidersHorizontal className="size-3.5" /> {lista.length} caixa(s)
+            </span>
+          </div>
+          <MaisOpcoes rotulo="Mais filtros">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <select className={sel} value={saida} onChange={(e) => setSaida(e.target.value as "baixo" | "cima")} aria-label="Saída dos cabos">
               <option value="baixo">Cabos por baixo</option>
               <option value="cima">Cabos por cima</option>
@@ -219,12 +232,6 @@ export function SeletorCaixa({
               <option value="IP54">IP54</option>
               <option value="IP65">IP65 (externo/úmido)</option>
             </select>
-            <select className={sel} value={capMin} onChange={(e) => setCapMin(Number(e.target.value))} aria-label="Capacidade mínima">
-              <option value={0}>Qualquer capacidade</option>
-              {capacidades.map((c) => (
-                <option key={c} value={c}>≥ {c} {padrao === "NEMA" ? "disjuntores" : "módulos"}</option>
-              ))}
-            </select>
             <select className={sel} value={fileiras} onChange={(e) => setFileiras(Number(e.target.value))} aria-label="Trilhos">
               <option value={0}>Qualquer nº de {padrao === "NEMA" ? "colunas" : "trilhos"}</option>
               {opcoesFileiras.map((c) => (
@@ -237,10 +244,8 @@ export function SeletorCaixa({
                 <option key={c} value={c}>{c} {padrao === "NEMA" ? "posições/coluna" : "módulos/trilho"}</option>
               ))}
             </select>
-            <span className="flex items-center gap-1.5 text-xs text-muted">
-              <SlidersHorizontal className="size-3.5" /> {lista.length} caixa(s)
-            </span>
-          </div>
+            </div>
+          </MaisOpcoes>
 
           <div className="grid gap-2 sm:grid-cols-2">
             {visiveis.map((c) => (
@@ -257,14 +262,16 @@ export function SeletorCaixa({
           </div>
           {lista.length > visiveis.length && (
             <button type="button" className="btn btn-secondary w-full" onClick={() => setVerTodos(true)}>
-              Ver todas ({lista.length})
+              Ver mais ({lista.length - visiveis.length})
             </button>
           )}
           {lista.length === 0 && <p className="text-sm text-muted">Nenhuma caixa com esses filtros. Tente “Personalizado”.</p>}
-          <p className="text-xs text-muted">
-            Medidas aproximadas — conferir catálogo do fabricante. Caixas NEMA aceitam disjuntores NEMA no barramento e DR/DPS no
-            trilho DIN auxiliar.
-          </p>
+          <Conferir
+            itens={[
+              "Medidas aproximadas — conferir o catálogo do fabricante.",
+              "Caixas NEMA aceitam disjuntores NEMA no barramento e DR/DPS no trilho DIN auxiliar.",
+            ]}
+          />
         </>
       )}
     </div>
@@ -307,16 +314,16 @@ function CartaoCaixa({
             {c.trilhoAux ? ` + ${c.trilhoAux} DIN` : ""})
           </span>
         </p>
-        <p className="text-xs font-medium">{linhaDoModelo({ ...c, linha: c.linha }).nome}</p>
-        <p className="text-xs text-muted">
-          {NOME_INSTALACAO[c.instalacao]} · {c.orientacao} · {c.ip}
-          {c.barramento ? " · barramento" : ""} · {c.referencia}
+        <p className="truncate text-xs">{linhaDoModelo({ ...c, linha: c.linha }).nome}</p>
+        <p className="truncate text-xs text-muted">
+          {pequena ? <span className="text-warn">Pequena para as peças atuais</span> : `cabe ${cabem} disj. 1P + reserva`}
         </p>
-        <p className="text-xs">
-          Cabe {cabem} disjuntor(es) 1P + reserva
-          <span className="text-muted"> · ~{c.medidas.altura}×{c.medidas.largura}×{c.medidas.profundidade} mm</span>
-        </p>
-        {pequena && <p className="text-xs text-warn">Pequena para as peças atuais</p>}
+        {ativa && (
+          <p className="text-xs text-muted">
+            {NOME_INSTALACAO[c.instalacao]} · {c.orientacao} · {c.ip}
+            {c.barramento ? " · barramento" : ""} · {c.referencia} · ~{c.medidas.altura}×{c.medidas.largura}×{c.medidas.profundidade} mm
+          </p>
+        )}
       </div>
     </button>
   );

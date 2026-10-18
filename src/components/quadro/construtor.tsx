@@ -55,6 +55,7 @@ import { type Instrumento, PainelInspecao } from "./painel-inspecao";
 import { PainelManutencao } from "./painel-manutencao";
 import { PainelPontos } from "./painel-pontos";
 import { PainelProjeto } from "./painel-projeto";
+import { Ajuda } from "@/components/divulgacao";
 import { VisorUnifilar } from "./visor-unifilar";
 import { VisorMultifilar } from "./visor-multifilar";
 import { EditorComponente } from "./editor-componente";
@@ -82,20 +83,31 @@ type Selecao =
 const ABAS = [
   { id: "circuitos", rotulo: "Circuitos" },
   { id: "ligacoes", rotulo: "Ligações" },
-  { id: "alertas", rotulo: "Verificação" },
+  { id: "alertas", rotulo: "Alertas" },
   { id: "fases", rotulo: "Fases" },
-  { id: "cargas", rotulo: "Quadro de cargas" },
-  { id: "materiais", rotulo: "Materiais" },
+  { id: "cargas", rotulo: "Cargas" },
   { id: "ia", rotulo: "Revisão IA" },
+  { id: "materiais", rotulo: "Lista" },
+  { id: "compras", rotulo: "Compras" },
   { id: "projeto", rotulo: "Projeto" },
   { id: "pontos", rotulo: "Pontos" },
-  { id: "compras", rotulo: "Compras" },
   { id: "inspecao", rotulo: "Inspeção" },
-  { id: "laudo", rotulo: "Laudo" },
-  { id: "art", rotulo: "ART/TRT" },
   { id: "manutencao", rotulo: "Manutenção" },
+  { id: "laudo", rotulo: "Laudo" },
+  { id: "art", rotulo: "ART" },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
+
+/** Abas agrupadas: 6 grupos na barra principal, sub-abas curtas dentro de cada grupo. */
+const GRUPOS: { rotulo: string; abas: Aba[] }[] = [
+  { rotulo: "Circuitos", abas: ["circuitos"] },
+  { rotulo: "Ligações", abas: ["ligacoes"] },
+  { rotulo: "Verificar", abas: ["alertas", "fases", "cargas", "ia"] },
+  { rotulo: "Materiais", abas: ["materiais", "compras"] },
+  { rotulo: "Projeto", abas: ["projeto", "pontos"] },
+  { rotulo: "Campo", abas: ["inspecao", "manutencao", "laudo", "art"] },
+];
+const rotuloAba = (id: Aba) => ABAS.find((a) => a.id === id)?.rotulo ?? id;
 
 const ESCALAS = [0.6, 0.8, 1, 1.25];
 
@@ -312,15 +324,40 @@ export function Construtor({
           className="min-w-0 flex-1 rounded-lg bg-transparent px-1 text-2xl font-bold tracking-tight outline-none focus:bg-surface-2"
           aria-label="Nome do quadro"
         />
-        <button onClick={() => setSel({ tipo: "config" })} className="btn btn-secondary p-2.5" aria-label="Configurar quadro">
-          <Settings2 className="size-4" />
-        </button>
         <div className="relative">
-          <button onClick={() => setMenu((v) => !v)} className="btn btn-secondary p-2.5" aria-label="Mais opções">
+          <button onClick={() => setMenu((v) => !v)} className="btn btn-secondary p-2.5" aria-label="Mais opções" aria-expanded={menu}>
             <MoreVertical className="size-4" />
           </button>
           {menu && (
             <div className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-border bg-surface p-1 shadow-lg" onMouseLeave={() => setMenu(false)}>
+              <a
+                href={`/quadros/${id}/imprimir?auto=1`}
+                target="_blank"
+                className="btn btn-ghost w-full justify-start"
+                onClick={(e) => {
+                  setMenu(false);
+                  if (alterado && !confirm("Há alterações não salvas — o PDF usa a versão salva. Salve antes. Continuar mesmo assim?")) e.preventDefault();
+                }}
+              >
+                <FileDown className="size-4" /> Exportar PDF
+              </a>
+              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setVerUnifilar(true); }}>
+                <GitBranch className="size-4" /> Unifilar
+              </button>
+              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setVerMultifilar(true); }}>
+                <GitBranch className="size-4" /> Multifilar
+              </button>
+              <BotaoOrcamento
+                className="btn btn-ghost w-full justify-start"
+                clienteId={clienteId}
+                clientes={clientes}
+                aviso={alterado ? "O orçamento usa a versão salva do quadro. Salve antes para incluir as últimas alterações. Continuar?" : undefined}
+                acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
+              />
+              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setSel({ tipo: "config" }); }}>
+                <Settings2 className="size-4" /> Configurar quadro
+              </button>
+              <div className="my-1 border-t border-border" />
               <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setSalvandoModelo(true); }}>
                 <BookmarkPlus className="size-4" /> Salvar como modelo
               </button>
@@ -364,48 +401,23 @@ export function Construtor({
       </div>
       {alterado && <p className="no-print -mt-2 text-xs text-warn">Alterações não salvas</p>}
 
-      {/* Ações principais */}
-      <div className="no-print -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-        <a
-          href={`/quadros/${id}/imprimir?auto=1`}
-          target="_blank"
-          className="btn btn-primary shrink-0"
-          onClick={(e) => {
-            if (alterado && !confirm("Há alterações não salvas — o PDF usa a versão salva. Salve antes. Continuar mesmo assim?")) e.preventDefault();
-          }}
-        >
-          <FileDown className="size-4" /> Exportar PDF
-        </a>
-        <button className="btn btn-secondary shrink-0" onClick={() => setVerUnifilar(true)}>
-          <GitBranch className="size-4" /> Unifilar
-        </button>
-        <button className="btn btn-secondary shrink-0" onClick={() => setVerMultifilar(true)}>
-          <GitBranch className="size-4" /> Multifilar
-        </button>
-        <BotaoOrcamento
-          className="btn btn-secondary shrink-0"
-          clienteId={clienteId}
-          clientes={clientes}
-          aviso={alterado ? "O orçamento usa a versão salva do quadro. Salve antes para incluir as últimas alterações. Continuar?" : undefined}
-          acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
-        />
-        <a href={`/quadros/${id}/imprimir?doc=etiquetas`} target="_blank" className="btn btn-secondary shrink-0">
-          <Tags className="size-4" /> Etiquetas
-        </a>
-      </div>
       {erroSalvar && <p className="text-sm text-danger">{erroSalvar}</p>}
 
       {/* Resumo */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Resumo rotulo="Fornecimento" valor={`${dados.alimentacao.tipo === "monofasico" ? "Mono" : dados.alimentacao.tipo === "bifasico" ? "Bi" : "Tri"} ${dados.alimentacao.tensaoFN}/${dados.alimentacao.tensaoFF} V`} />
-        <Resumo rotulo="Potência instalada" valor={`${(analise.potenciaTotalW / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kW`} />
-        <Resumo rotulo="Módulos" valor={`${analise.modulosUsados}/${analise.modulosTotais} · reserva ${analise.reservaExigida}`} />
-        <button onClick={() => setAba("alertas")} className="card p-3 text-left">
-          <p className="text-xs text-muted">Verificação NBR 5410</p>
-          <p className={`flex items-center gap-1.5 font-semibold ${nErros ? "text-danger" : nAvisos ? "text-warn" : "text-ok"}`}>
-            {nErros || nAvisos ? <AlertTriangle className="size-4" /> : null}
-            {nErros ? `${nErros} erro(s)` : nAvisos ? `${nAvisos} aviso(s)` : "Conforme"}
-          </p>
+      <div className="no-print -mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+        <span className="font-medium text-fg">
+          {dados.alimentacao.tipo === "monofasico" ? "Mono" : dados.alimentacao.tipo === "bifasico" ? "Bi" : "Tri"} {dados.alimentacao.tensaoFN}/{dados.alimentacao.tensaoFF} V
+        </span>
+        <span>{(analise.potenciaTotalW / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kW</span>
+        <span>
+          {analise.modulosUsados}/{analise.modulosTotais} mód.
+        </span>
+        <button
+          onClick={() => setAba("alertas")}
+          className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${nErros ? "bg-danger-soft text-danger" : nAvisos ? "bg-warn-soft text-warn" : "bg-ok-soft text-ok"}`}
+        >
+          {nErros || nAvisos ? <AlertTriangle className="size-3.5" /> : null}
+          {nErros ? `${nErros} erro(s)` : nAvisos ? `${nAvisos} aviso(s)` : "NBR 5410 ok"}
         </button>
       </div>
 
@@ -437,6 +449,14 @@ export function Construtor({
             </label>
           )}
           <div className="flex items-center gap-1">
+            <Ajuda titulo="Visões do quadro" alinhar="direita">
+              <ul className="list-disc space-y-1 pl-4">
+                <li><b>Com porta:</b> frente do quadro fechado. Toque na porta para abrir.</li>
+                <li><b>Espelho:</b> só as alavancas aparecem. Toque numa peça para editar.</li>
+                <li><b>Montagem:</b> trilhos, bornes e barras. Toque num espaço vazio para colocar uma peça.</li>
+                <li><b>Ligações:</b> toque num cabo para ver de onde sai, para onde vai, cor e seção.</li>
+              </ul>
+            </Ajuda>
             <button className="btn btn-ghost p-2" disabled={escala === 0} onClick={() => setEscala((e) => e - 1)} aria-label="Diminuir zoom">
               <ZoomOut className="size-4" />
             </button>
@@ -445,15 +465,6 @@ export function Construtor({
             </button>
           </div>
         </div>
-        <p className="no-print px-3 pt-2 text-xs text-muted">
-          {vista === "ligacoes"
-            ? "Toque num cabo para ver de onde sai, para onde vai, cor e seção."
-            : vista === "porta"
-              ? "Frente do quadro fechado. Toque na porta para abrir."
-              : vista === "espelho"
-                ? "Sem porta: o espelho esconde bornes e cabos, como no quadro real. Toque numa peça para editar."
-                : "Sem espelho: trilhos, bornes e barras à mostra. Toque num espaço vazio para colocar uma peça."}
-        </p>
         <div className="overflow-x-auto bg-surface-2 p-4">
           <div className="mx-auto w-max">
             {vista !== "ligacoes" ? (
@@ -488,18 +499,35 @@ export function Construtor({
         )}
       </div>
 
-      {/* Abas de análise */}
+      {/* Abas de análise (agrupadas) */}
       <div className="no-print -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
-        {ABAS.map((a) => (
+        {GRUPOS.map((g) => (
           <button
-            key={a.id}
-            onClick={() => setAba(a.id)}
-            className={`btn shrink-0 py-2 ${aba === a.id ? "btn-primary" : "btn-secondary"}`}
+            key={g.rotulo}
+            onClick={() => setAba(g.abas[0])}
+            className={`btn shrink-0 py-2 ${g.abas.includes(aba) ? "btn-primary" : "btn-secondary"}`}
           >
-            {a.rotulo}
+            {g.rotulo}
           </button>
         ))}
       </div>
+      {(() => {
+        const g = GRUPOS.find((x) => x.abas.includes(aba));
+        if (!g || g.abas.length < 2) return null;
+        return (
+          <div className="no-print -mt-2 flex gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1">
+            {g.abas.map((a) => (
+              <button
+                key={a}
+                onClick={() => setAba(a)}
+                className={`shrink-0 rounded-lg px-3 py-1 text-sm font-medium ${aba === a ? "bg-surface shadow-sm" : "text-muted"}`}
+              >
+                {rotuloAba(a)}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
       <section className="card p-4">
         {aba === "circuitos" && (
           <PainelCircuitos
@@ -569,20 +597,10 @@ export function Construtor({
             nome={nome}
             dados={dados}
             analise={analise}
-            alterado={alterado}
             aoMudarMemorial={(memorial) => aplicarPersistido({ memorial })}
             aoMudarConcessionaria={(concessionaria) => setDados((q) => ({ ...q, concessionaria }))}
             cliente={cliente}
             perfil={perfil}
-            aoVerUnifilar={() => setVerUnifilar(true)}
-            botaoOrcamento={
-              <BotaoOrcamento
-                clienteId={clienteId}
-                clientes={clientes}
-                aviso={alterado ? "O orçamento usa a versão salva do quadro. Continuar?" : undefined}
-                acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
-              />
-            }
           />
         )}
         {aba === "pontos" && (
@@ -830,15 +848,6 @@ export function Construtor({
         <h2 className="mb-2 mt-6 font-bold">Quadro de cargas</h2>
         <QuadroCargas analise={analise} />
       </div>
-    </div>
-  );
-}
-
-function Resumo({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <div className="card p-3">
-      <p className="text-xs text-muted">{rotulo}</p>
-      <p className="truncate font-semibold">{valor}</p>
     </div>
   );
 }

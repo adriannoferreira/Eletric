@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, MessageCircle, Printer, Scale } from "lucide-react";
-import { MenuAcoes } from "@/components/divulgacao";
+import { Ajuda, MenuAcoes } from "@/components/divulgacao";
 import { useMemo, useState } from "react";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import { CATEGORIAS_COMPRA, type ListaCompras, montarListaCompras, textoCotacao } from "@/lib/eletrica/compras";
@@ -20,6 +20,9 @@ export function TabelaCompras({
   marcar?: (chave: string, sim: boolean) => void;
 }) {
   const feitas = new Set(compradas);
+  const [aberto, setAberto] = useState<string | null>(null);
+  // Na tela, especificação/alternativa/observação ficam atrás de um toque; na impressão aparece tudo.
+  const resumido = Boolean(marcar);
   return (
     <div className="space-y-4">
       {Object.entries(CATEGORIAS_COMPRA).map(([cat, nome]) => {
@@ -44,16 +47,24 @@ export function TabelaCompras({
                     ) : (
                       <span className="mt-0.5 size-4 shrink-0 rounded-sm border-2 border-current" aria-hidden />
                     )}
-                    <div className="min-w-0 flex-1">
-                      <p className={`font-medium ${ok ? "line-through" : ""}`}>{i.descricao}</p>
-                      <p className="text-xs text-muted">{i.especificacao}</p>
-                      {i.observacao && <p className="text-xs text-warn">{i.observacao}</p>}
+                    <div
+                      className={`min-w-0 flex-1 ${resumido ? "cursor-pointer" : ""}`}
+                      onClick={resumido ? () => setAberto(aberto === i.chave ? null : i.chave) : undefined}
+                    >
+                      <p className={`font-medium ${ok ? "line-through" : ""} ${resumido && aberto !== i.chave ? "truncate" : ""}`}>{i.descricao}</p>
+                      {(!resumido || aberto === i.chave) && (
+                        <>
+                          <p className="text-xs text-muted">{i.especificacao}</p>
+                          {i.alternativa && <p className="text-xs text-muted">{i.alternativa}</p>}
+                          {i.observacao && <p className="text-xs text-warn">{i.observacao}</p>}
+                        </>
+                      )}
                     </div>
                     <div className="shrink-0 text-right text-sm">
                       <p className="font-semibold">
                         {i.quantidade.toLocaleString("pt-BR")} {i.unidade}
                       </p>
-                      {i.alternativa && <p className="max-w-36 text-xs text-muted">{i.alternativa}</p>}
+                      {!resumido && i.alternativa && <p className="max-w-36 text-xs text-muted">{i.alternativa}</p>}
                       <p className="text-xs text-muted">{i.total !== null ? reais(i.total) : "sem preço"}</p>
                     </div>
                   </li>
@@ -65,7 +76,7 @@ export function TabelaCompras({
       })}
       <p className="text-right text-sm">
         Total estimado: <b>{reais(lista.totalEstimado)}</b>
-        {lista.itensSemPreco > 0 && <span className="text-muted"> · {lista.itensSemPreco} item(ns) sem preço no catálogo</span>}
+        {lista.itensSemPreco > 0 && <span className="text-muted"> · {lista.itensSemPreco} sem preço</span>}
       </p>
     </div>
   );
@@ -114,10 +125,14 @@ export function PainelCompras({
         />
       </div>
       <div>
-        <div className="mb-1 flex justify-between text-xs text-muted">
+        <div className="mb-1 flex items-center justify-between text-xs text-muted">
           <span>
             Comprado: {feitas}/{lista.itens.length}
           </span>
+          <Ajuda titulo="Lista de compras" alinhar="direita">
+            Quantidades estimadas a partir do quadro (cabos com 10% de folga). Toque num item para ver a especificação. Confira na
+            obra: eletrodutos, caixas e retornos dependem do trajeto real. O que você marcar como comprado fica salvo.
+          </Ajuda>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-surface-2">
           <div className="h-full bg-ok transition-all" style={{ width: `${(feitas / Math.max(1, lista.itens.length)) * 100}%` }} />
@@ -130,10 +145,6 @@ export function PainelCompras({
           aoMarcar(sim ? [...new Set([...dados.compras, chave])] : dados.compras.filter((c) => c !== chave))
         }
       />
-      <p className="text-xs text-muted">
-        Quantidades estimadas a partir do quadro (cabos com 10% de folga). Confira na obra: eletrodutos, caixas e retornos
-        dependem do trajeto real.
-      </p>
     </div>
   );
 }

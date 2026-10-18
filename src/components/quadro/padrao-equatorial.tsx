@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { PadraoEquatorial } from "@/lib/eletrica/equatorial";
 import { NORMAS, REQUISITOS_PADRAO, ROTULO_LIGACAO } from "@/lib/normas/equatorial-pa";
-import { MenuMais, SeloConferir, SeloRef } from "./mini";
+import { Conferir, MenuAcoes, Ref } from "@/components/divulgacao";
 
 const n = (v: number, d = 2) => v.toLocaleString("pt-BR", { maximumFractionDigits: d });
 
@@ -50,15 +50,15 @@ export function BlocoPadraoEquatorial({
       )}
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <SeloRef href={nt.url} titulo={`${nt.codigo} rev. ${nt.revisao} — ${nt.titulo}`}>
-          {nt.codigo} Tab. 2
-        </SeloRef>
+        <Ref norma={nt.codigo} item="Tab. 2" href={nt.url}>
+          {`${nt.codigo} rev. ${nt.revisao} — ${nt.titulo}`}
+        </Ref>
         {disjuntorQdcA != null && l && (
           <span className={`text-xs ${qdcMaior ? "font-semibold text-danger" : "text-muted"}`}>
             QDC {disjuntorQdcA} A {qdcMaior ? "> padrão — reduzir" : "≤ padrão ✓"}
           </span>
         )}
-        {disjuntorQdcA != null && l && <SeloRef titulo="Disjuntor geral do QDC não pode ser maior que o do padrão">6.3.8.6</SeloRef>}
+        {disjuntorQdcA != null && l && <Ref norma={nt.codigo} item="6.3.8.6">Disjuntor geral do QDC não pode ser maior que o do padrão.</Ref>}
       </div>
 
       {c.estudos.length > 0 && (
@@ -72,7 +72,17 @@ export function BlocoPadraoEquatorial({
         </details>
       )}
 
-      <SeloConferir itens={conferir} aberto={impressao} />
+      {impressao ? (
+        conferir.length > 0 && (
+          <ul className="list-disc space-y-0.5 pl-5 text-xs text-warn">
+            {conferir.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <Conferir itens={conferir} />
+      )}
 
       <details open={impressao} className="rounded-xl border border-border p-3">
         <summary className="cursor-pointer font-semibold">Detalhes</summary>
@@ -101,14 +111,14 @@ export function BlocoPadraoEquatorial({
             <ul className="mt-1 space-y-1.5">
               {RESUMO_REQUISITOS.map((r, i) => (
                 <li key={i}>
-                  {r.texto} <SeloRef>{r.ref}</SeloRef>
+                  {r.texto} <Ref norma={r.ref} />
                 </li>
               ))}
             </ul>
           </div>
           <div className="flex flex-wrap gap-1">
             {c.referencias.map((r) => (
-              <SeloRef key={r}>{r}</SeloRef>
+              <Ref key={r} norma={r} />
             ))}
           </div>
         </div>
@@ -119,11 +129,7 @@ export function BlocoPadraoEquatorial({
           <a href={`/normas/calculadora${quadroId ? `?quadro=${quadroId}` : ""}`} className="btn btn-secondary">
             Calculadora do padrão
           </a>
-          <MenuMais>
-            <a href={nt.url} target="_blank" rel="noreferrer" className="btn btn-ghost">
-              <ExternalLink className="size-4" /> Norma oficial ({nt.codigo})
-            </a>
-          </MenuMais>
+          <MenuAcoes acoes={[{ rotulo: `Norma oficial (${nt.codigo})`, icone: <ExternalLink className="size-4" />, href: nt.url, externo: true }]} />
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ import {
 } from "@/lib/eletrica/pontos";
 import type { PontosConfig, QuadroDados } from "@/lib/eletrica/tipos";
 import { Materiais } from "./lista-pontos-impressao";
-import { MenuMais, SeloConferir, SeloRef } from "./mini";
+import { Conferir, MenuAcoes, Ref } from "@/components/divulgacao";
 
 const ICONE = { luz: Lightbulb, interruptor: ToggleLeft, tug: Plug, tue: Zap } as const;
 const n = (v: number) => v.toLocaleString("pt-BR");
@@ -71,16 +71,12 @@ export function PainelPontos({
       </div>
       <div className="flex items-center gap-2">
         {botaoOrcamento}
-        <MenuMais>
-          <a href={`/quadros/${id}/imprimir?doc=pontos`} target="_blank" className="btn btn-ghost">
-            <Printer className="size-4" /> Imprimir / PDF
-          </a>
-        </MenuMais>
+        <MenuAcoes acoes={[{ rotulo: "Imprimir / PDF", icone: <Printer className="size-4" />, href: `/quadros/${id}/imprimir?doc=pontos`, externo: true }]} />
       </div>
       <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
         Feito {feitosValidos}/{totalChecklist}
-        {lista.origem === "projeto" && <SeloRef titulo="Quantidades mínimas de iluminação e tomadas por ambiente">NBR 5410 9.5.2</SeloRef>}
-        <SeloRef titulo={AVISO_ALTURAS}>Alturas: prática usual</SeloRef>
+        {lista.origem === "projeto" && <Ref norma="NBR 5410" item="9.5.2">Quantidades mínimas de iluminação e tomadas por ambiente.</Ref>}
+        <Ref norma="Alturas" item="prática usual">{AVISO_ALTURAS}</Ref>
       </p>
 
       <div className="space-y-2">
@@ -156,7 +152,7 @@ function BlocoAmbiente({
           ))}
         </ul>
 
-        <SeloConferir itens={a.avisos} />
+        <Conferir itens={a.avisos} />
 
         <ul className="space-y-1">
           {a.checklist.map((c) => (

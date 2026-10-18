@@ -1,5 +1,6 @@
 "use client";
 
+import { MaisOpcoes } from "@/components/divulgacao";
 import { useActionState, useState } from "react";
 import { Campo } from "@/components/ui";
 import { SeletorCaixa } from "@/components/quadro/seletor-caixa";
@@ -32,7 +33,7 @@ export function FormNovoQuadro({
         <Campo rotulo="Nome do quadro *">
           <input name="nome" required className="input" placeholder="Ex.: QDC Casa do João" autoFocus />
         </Campo>
-        <Campo rotulo="Cliente (opcional)">
+        <Campo rotulo="Cliente">
           <select name="clienteId" defaultValue={clienteInicial} className="input">
             <option value="">— Sem cliente —</option>
             {clientes.map((c) => (
@@ -58,39 +59,40 @@ export function FormNovoQuadro({
             >
               <input type="radio" name="tipo" value={v} checked={tipo === v} onChange={() => setTipo(v)} className="sr-only" />
               <span className="block text-sm font-semibold">{r}</span>
-              <span className="block text-xs text-muted">{d}</span>
+              <span className="sr-only">{d}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Campo rotulo="Tensões da rede" dica="Confira com a concessionária da cidade">
-          <select name="tensoes" defaultValue="127/220" className="input">
-            {Object.entries(TENSOES).map(([v, r]) => (
-              <option key={v} value={v}>{r}</option>
-            ))}
-          </select>
-        </Campo>
-        <Campo rotulo="Esquema de aterramento" dica="Residencial típico: TN-C-S ou TN-S">
-          <select name="esquema" defaultValue="TN-S" className="input">
-            <option value="TN-S">TN-S (neutro e terra separados)</option>
-            <option value="TN-C-S">TN-C-S (separa no quadro de entrada)</option>
-            <option value="TT">TT (terra local, neutro da rede)</option>
-          </select>
-        </Campo>
-      </div>
+      <MaisOpcoes rotulo="Tensão e aterramento">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Campo rotulo="Tensões da rede" ajuda="Confira com a concessionária da cidade (Equatorial Pará: 127/220 V).">
+            <select name="tensoes" defaultValue="127/220" className="input">
+              {Object.entries(TENSOES).map(([v, r]) => (
+                <option key={v} value={v}>{r}</option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Esquema de aterramento" ajuda="Residencial típico: TN-C-S ou TN-S.">
+            <select name="esquema" defaultValue="TN-S" className="input">
+              <option value="TN-S">TN-S (neutro e terra separados)</option>
+              <option value="TN-C-S">TN-C-S (separa no quadro de entrada)</option>
+              <option value="TT">TT (terra local, neutro da rede)</option>
+            </select>
+          </Campo>
+        </div>
+      </MaisOpcoes>
 
       <fieldset className="space-y-2">
         <legend className="label mb-1.5">Caixa do quadro</legend>
         <input type="hidden" name="modelo" value={JSON.stringify(modelo)} />
         <SeletorCaixa valor={modelo} aoMudar={setModelo} />
-        <p className="text-xs text-muted">Dá para trocar depois em “Configurar quadro”.</p>
       </fieldset>
 
       {erro && <p className="text-sm text-danger">{erro}</p>}
       <button className="btn btn-primary w-full md:w-auto" disabled={pendente}>
-        {pendente ? "Criando…" : "Criar e montar o quadro"}
+        {pendente ? "Criando…" : "Criar quadro"}
       </button>
     </form>
   );

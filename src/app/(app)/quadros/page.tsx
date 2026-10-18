@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { BookCopy, LayoutGrid, PencilRuler, User, Wand2 } from "lucide-react";
+import { BookCopy, LayoutGrid, PencilRuler, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { MiniaturaQuadro } from "@/components/quadro/miniatura";
 import { ListaModelos } from "@/components/quadro/modelos";
@@ -20,9 +20,9 @@ const STATUS = {
 } as const;
 
 const OPCOES = [
-  { href: "/quadros/novo", icone: PencilRuler, titulo: "Montar do zero", texto: "Escolha a caixa e coloque as peças uma a uma no construtor." },
-  { href: "/quadros/projeto", icone: Wand2, titulo: "Gerar projeto da obra", texto: "Informe ambientes e cargas: o app gera circuitos, proteções e o QDC." },
-  { href: "/quadros?aba=modelos", icone: BookCopy, titulo: "A partir de um modelo", texto: "Use um quadro salvo como modelo ou um dos exemplos prontos." },
+  { href: "/quadros/novo", icone: PencilRuler, titulo: "Do zero" },
+  { href: "/quadros/projeto", icone: Wand2, titulo: "Da obra" },
+  { href: "/quadros?aba=modelos", icone: BookCopy, titulo: "De modelo" },
 ];
 
 export default async function QuadrosPage({ searchParams }: PageProps<"/quadros">) {
@@ -41,18 +41,24 @@ export default async function QuadrosPage({ searchParams }: PageProps<"/quadros"
 
   return (
     <>
-      <Cabecalho titulo="Quadros" subtitulo="Monte, gere ou reaproveite quadros de distribuição verificados pela NBR 5410" />
+      <Cabecalho
+        titulo="Quadros"
+        ajuda={
+          <ul className="list-disc space-y-1 pl-4">
+            <li><b>Do zero:</b> escolha a caixa e coloque as peças uma a uma.</li>
+            <li><b>Da obra:</b> informe ambientes e cargas; o app gera circuitos, proteções e o QDC.</li>
+            <li><b>De modelo:</b> use um quadro salvo como modelo ou um exemplo pronto.</li>
+          </ul>
+        }
+      />
 
-      <section className="mb-5 grid gap-2 sm:grid-cols-3">
+      <section className="mb-5 grid grid-cols-3 gap-2">
         {OPCOES.map((o) => (
-          <Link key={o.href} href={o.href} className="card flex items-start gap-3 p-4 transition hover:border-accent">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg">
+          <Link key={o.href} href={o.href} className="card flex flex-col items-center gap-2 p-3 text-center text-sm font-medium transition hover:border-accent">
+            <span className="grid size-10 place-items-center rounded-xl bg-accent text-accent-fg">
               <o.icone className="size-5" />
             </span>
-            <span>
-              <span className="block font-semibold">{o.titulo}</span>
-              <span className="block text-sm text-muted">{o.texto}</span>
-            </span>
+            {o.titulo}
           </Link>
         ))}
       </section>
@@ -76,35 +82,27 @@ export default async function QuadrosPage({ searchParams }: PageProps<"/quadros"
         <Vazio
           icone={LayoutGrid}
           titulo="Nenhum quadro ainda"
-          texto="Escolha uma das três formas acima para começar."
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="card divide-y divide-border">
           {lista.map(({ q, cliente }) => {
             const dados = lerQuadro(q.dados);
             const a = analisarQuadro(dados);
             const st = STATUS[a.status];
             return (
               <li key={q.id}>
-                <Link href={`/quadros/${q.id}`} className="card block overflow-hidden transition hover:border-accent">
-                  <div className="bg-surface-2 p-3">
-                    <MiniaturaQuadro dados={dados} />
-                  </div>
-                  <div className="space-y-1.5 p-3.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold">{q.nome}</p>
-                      <Badge tom={st.tom}>{st.rotulo}</Badge>
-                    </div>
-                    <p className="text-sm text-muted">
-                      {dados.circuitos.length} circuito(s) · {a.modulosUsados}/{a.modulosTotais} módulos ·{" "}
-                      {(a.potenciaTotalW / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kW
-                      {dados.projeto ? " · projeto da obra" : ""}
-                    </p>
-                    <p className="flex items-center justify-between text-xs text-muted">
-                      <span className="flex items-center gap-1">{cliente && <><User className="size-3" />{cliente}</>}</span>
-                      <span>{dataCurta(q.atualizadoEm)}</span>
-                    </p>
-                  </div>
+                <Link href={`/quadros/${q.id}`} className="flex items-center gap-3 p-2.5 transition hover:bg-surface-2">
+                  <span className="shrink-0 rounded-lg bg-surface-2">
+                    <MiniaturaQuadro dados={dados} pequena />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{q.nome}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {dados.circuitos.length} circ. · {(a.potenciaTotalW / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kW
+                      {cliente ? ` · ${cliente}` : ""}
+                    </span>
+                  </span>
+                  <Badge tom={st.tom}>{st.rotulo}</Badge>
                 </Link>
               </li>
             );
