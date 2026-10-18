@@ -53,6 +53,26 @@ export const precosHistorico = pgTable("precos_historico", {
   criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Preço de uma variante numa loja específica (para o comparativo entre lojas).
+ * Vem de cotações lidas, ofertas da pesquisa com IA aprovadas (com link) ou digitação manual.
+ */
+export const precosLoja = pgTable("precos_loja", {
+  id: serial("id").primaryKey(),
+  catalogoId: integer("catalogo_id")
+    .notNull()
+    .references(() => catalogo.id, { onDelete: "cascade" }),
+  fornecedorId: integer("fornecedor_id").references(() => fornecedores.id, { onDelete: "set null" }),
+  /** Nome da loja (do cadastro de fornecedores ou o visto na oferta da web). */
+  loja: text("loja").notNull(),
+  /** Preço já convertido para a unidade do item do catálogo. */
+  preco: money("preco").notNull(),
+  /** cotacao | ia | manual */
+  fonte: text("fonte").$type<"cotacao" | "ia" | "manual">().notNull(),
+  url: text("url").notNull().default(""),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /** Preços encontrados automaticamente (IA/cron) que esperam aprovação do usuário. */
 export const sugestoesPreco = pgTable("sugestoes_preco", {
   id: serial("id").primaryKey(),
@@ -146,6 +166,7 @@ export const sinapiItens = pgTable(
 );
 
 export type Fornecedor = typeof fornecedores.$inferSelect;
+export type PrecoLoja = typeof precosLoja.$inferSelect;
 export type PrecoHistorico = typeof precosHistorico.$inferSelect;
 export type SugestaoPreco = typeof sugestoesPreco.$inferSelect;
 export type Kit = typeof kits.$inferSelect;
