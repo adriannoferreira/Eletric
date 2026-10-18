@@ -57,15 +57,24 @@ export function LigacoesVisual({
 
   const cabo = (l: Ligacao, d: string) => {
     const c = CORES_CABO[l.cor];
-    const w = espessura(l.secao);
+    const ativo = selecionada === l.id;
+    // O cabo selecionado fica mais grosso e ganha um brilho da própria cor (vermelho destaca vermelho).
+    const w = espessura(l.secao) * (ativo ? 1.6 : 1);
+    const cor = c?.hex ?? "#888";
+    const brilho = l.cor === "verde-amarelo" ? "#16a34a" : cor;
     return (
-      <g key={l.id} opacity={opac(l.id)} onClick={aoSelecionar ? (e) => (e.stopPropagation(), aoSelecionar(l.id === selecionada ? null : l.id)) : undefined} className={aoSelecionar ? "cursor-pointer" : ""}>
+      <g key={l.id} opacity={opac(l.id)} onClick={aoSelecionar ? (e) => (e.stopPropagation(), aoSelecionar(ativo ? null : l.id)) : undefined} className={aoSelecionar ? "cursor-pointer" : ""}>
         {aoSelecionar && <path d={d} stroke="transparent" strokeWidth={8} fill="none" />}
-        <path d={d} stroke="#0b0f14" strokeWidth={w + 0.9} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={0.55} />
-        <path d={d} stroke={c?.hex ?? "#888"} strokeWidth={w} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+        {ativo && (
+          <>
+            <path d={d} stroke={brilho} strokeWidth={w + 7} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={0.28} className="pulso-cabo" />
+            <path d={d} stroke="#ffffff" strokeWidth={w + 2.4} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+          </>
+        )}
+        <path d={d} stroke="#0b0f14" strokeWidth={w + 0.9} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={ativo ? 0.3 : 0.55} />
+        <path d={d} stroke={cor} strokeWidth={w} fill="none" strokeLinejoin="round" strokeLinecap="round" />
         {c?.borda && <path d={d} stroke={c.borda} strokeWidth={w * 0.38} strokeDasharray={l.cor === "verde-amarelo" ? "3 3" : undefined} fill="none" strokeLinejoin="round" />}
         {animar && <path d={d} stroke="#fff" strokeOpacity={0.85} strokeWidth={Math.max(0.6, w * 0.35)} strokeDasharray="1.5 6" fill="none" className="fluxo" />}
-        {selecionada === l.id && <path d={d} stroke="#fbbf24" strokeWidth={w + 2.6} fill="none" opacity={0.45} strokeLinejoin="round" />}
       </g>
     );
   };
@@ -80,7 +89,7 @@ export function LigacoesVisual({
       role="img"
       aria-label={`Ligações internas do quadro ${nome ?? ""}`}
     >
-      <style>{`.fluxo{animation:fluxo 1.1s linear infinite}@keyframes fluxo{to{stroke-dashoffset:-15}}@media (prefers-reduced-motion: reduce){.fluxo{animation:none}}`}</style>
+      <style>{`.fluxo{animation:fluxo 1.1s linear infinite}@keyframes fluxo{to{stroke-dashoffset:-15}}.pulso-cabo{animation:pulso-cabo 1.4s ease-in-out infinite}@keyframes pulso-cabo{50%{opacity:.5}}@media (prefers-reduced-motion: reduce){.fluxo,.pulso-cabo{animation:none}}`}</style>
       <defs>
         <linearGradient id="trilho" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#f3f4f6" />
