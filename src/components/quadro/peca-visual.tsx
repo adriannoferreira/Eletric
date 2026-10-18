@@ -1,14 +1,32 @@
-import type { Peca } from "@/lib/eletrica/pecas";
+import { MM_POR_MODULO, padraoDaPeca, type Peca } from "@/lib/eletrica/pecas";
 import type { Fase } from "@/lib/eletrica/tipos";
 import { COR_FASE } from "./montagem";
+import { DefsPecas, PecaSVG } from "./peca-svg";
 
 export type DestaquePeca = "ok" | "aviso" | "erro" | "selecionado" | null;
 
 /**
- * Desenho de uma peça DIN em proporção real (largura = módulos × `m` px).
- * Feito em HTML/CSS para ficar nítido em qualquer zoom.
+ * Desenho de uma peça em proporção real (largura = módulos × `m` px).
+ * Peças DIN usam o desenho realista em SVG (o mesmo das Ligações e do Simulador);
+ * peças NEMA mantêm o desenho simplificado em HTML.
  */
-export function PecaVisual({
+export function PecaVisual(props: Parameters<typeof PecaVisualSimples>[0]) {
+  const { peca, m, altura, fases, geral, destaque, coresFase = COR_FASE } = props;
+  if (padraoDaPeca(peca) === "NEMA") return <PecaVisualSimples {...props} />;
+  const w = peca.modulos * MM_POR_MODULO;
+  const h = (MM_POR_MODULO * altura) / m;
+  return (
+    <svg width={peca.modulos * m} height={altura} viewBox={`-1 -1 ${w + 3} ${h + 3}`} className="block overflow-visible" aria-hidden>
+      <defs>
+        <DefsPecas />
+      </defs>
+      <PecaSVG peca={peca} x={0} y={0} w={w} h={h} fases={fases} coresFase={coresFase} geral={geral} detalhe={m >= 30} destaque={destaque ?? null} />
+    </svg>
+  );
+}
+
+/** Desenho simplificado em HTML/CSS (peças NEMA). */
+function PecaVisualSimples({
   peca,
   m,
   altura,

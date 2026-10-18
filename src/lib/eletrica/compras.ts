@@ -182,19 +182,20 @@ export function montarListaCompras(
   if (livres > 0) {
     add({ chave: "quadro:tampa", categoria: "quadro", descricao: "Tampa cega para módulo DIN", especificacao: "Para fechar os espaços livres/reserva", quantidade: livres, unidade: "un", precoUnitario: preco([/tampa/]) });
   }
-  // Ponteiras: uma por condutor em cada borne do quadro.
-  const condutores = analise.circuitos.reduce((s, r) => s + (r.circuito.ligacao === "FN" ? 3 : r.circuito.ligacao === "FF" ? 3 : 5), 0);
-  const ponteiras = Math.max(20, Math.ceil((condutores * 1.2) / 10) * 10);
-  add({
-    chave: "quadro:ponteiras",
-    categoria: "quadro",
-    descricao: "Terminais tubulares (ponteiras) isolados",
-    especificacao: "Nas bitolas dos cabos usados (1,5 / 2,5 / 4 / 6 / 10 mm²…), para todos os condutores que entram em disjuntores e barras",
-    quantidade: ponteiras,
-    unidade: "un",
-    alternativa: `ou ${Math.ceil(ponteiras / 100)} pacote(s) de 100 sortidos`,
-    precoUnitario: preco([/ponteira|terminal tubular/]),
-  });
+  // Ponteiras: uma por ponta de cabo que entra em borne (lista de ligações), por bitola.
+  for (const pt of ligacoesDoQuadro.ponteirasPorBitola) {
+    const qtd = Math.max(10, Math.ceil((pt.quantidade * 1.2) / 10) * 10);
+    add({
+      chave: `quadro:ponteiras:${pt.secao}`,
+      categoria: "quadro",
+      descricao: `Ponteira tubular isolada ${fmt(pt.secao)} mm²`,
+      especificacao: `Colar ${pt.cor} (código DIN 46228-4 — conferir na embalagem). ${pt.quantidade} pontas de cabo nos bornes + 20% de folga`,
+      quantidade: qtd,
+      unidade: "un",
+      alternativa: `ou ${Math.ceil(qtd / 100)} pacote(s) de 100`,
+      precoUnitario: preco([/ponteira|terminal tubular|ilhos/, new RegExp(`\\b${String(pt.secao).replace(".", "[,.]")}\\b`)]),
+    });
+  }
   add({ chave: "quadro:abracadeiras", categoria: "quadro", descricao: "Abraçadeiras de nylon (enforca-gato)", especificacao: "100 mm a 200 mm", quantidade: 1, unidade: "pacote 100", precoUnitario: preco([/abracadeira/]) });
   add({ chave: "quadro:fita", categoria: "quadro", descricao: "Fita isolante", especificacao: "Antichama, 19 mm × 20 m", quantidade: nCirc > 10 ? 2 : 1, unidade: "rolo", precoUnitario: preco([/fita isolante/]) });
   add({

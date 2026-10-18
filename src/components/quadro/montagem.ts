@@ -139,3 +139,39 @@ export function numeroCircuito(q: QuadroDados, circuitoId: string | null) {
   const i = q.circuitos.findIndex((c) => c.id === circuitoId);
   return i >= 0 ? i + 1 : null;
 }
+
+/** Move a peça para outra posição (mesma ou outra linha do mesmo padrão), sem sobrepor. */
+export function moverComponente(q: QuadroDados, compId: string, fileira: number, posicao: number): QuadroDados | null {
+  const c = q.componentes.find((x) => x.id === compId);
+  const p = c && peca(c.pecaId);
+  if (!c || !p) return null;
+  if (c.fileira === fileira && c.posicao === posicao) return q;
+  if (!cabe(q, fileira, posicao, modulosOcupados(p), compId, padraoDaPeca(p))) return null;
+  return { ...q, componentes: q.componentes.map((x) => (x.id === compId ? { ...x, fileira, posicao } : x)) };
+}
+
+/**
+ * Duplica a peça na próxima posição livre (logo depois dela, se couber).
+ * A cópia não herda circuito nem o papel de "geral".
+ */
+export function duplicarComponente(q: QuadroDados, compId: string): { quadro: QuadroDados; id: string } | null {
+  const c = q.componentes.find((x) => x.id === compId);
+  const p = c && peca(c.pecaId);
+  if (!c || !p) return null;
+  const largura = modulosOcupados(p);
+  const padrao = padraoDaPeca(p);
+  const linhas = linhasDoModelo(q.modelo);
+  let lugar: { fileira: number; posicao: number } | null = null;
+  // Primeiro procura à direita na mesma linha, depois nas seguintes, depois em qualquer lugar.
+  for (let f = c.fileira; f < linhas.length && !lugar; f++)
+    for (let pos = f === c.fileira ? c.posicao + largura : 0; pos + largura <= linhas[f].modulos; pos++)
+      if (cabe(q, f, pos, largura, undefined, padrao)) {
+        lugar = { fileira: f, posicao: pos };
+        break;
+      }
+  lugar ??= primeiroEspaco(q, largura, undefined, padrao);
+  if (!lugar) return null;
+  const id = novoId("k");
+  const copia: Componente = { ...c, id, ...lugar, circuitoId: null, geral: false, etiqueta: "" };
+  return { quadro: { ...q, componentes: [...q.componentes, copia] }, id };
+}

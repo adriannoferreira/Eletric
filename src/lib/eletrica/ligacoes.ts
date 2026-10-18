@@ -1294,6 +1294,77 @@ export function verificarLigacoes(
 }
 
 // ---------------------------------------------------------------------------
+// Ponteiras (terminais tubulares isolados)
+// ---------------------------------------------------------------------------
+
+/**
+ * Cor do colar isolante por seção — código DIN 46228-4 (usual no mercado).
+ * Há fabricantes que seguem o código francês: CONFERIR na embalagem.
+ */
+export const CORES_PONTEIRA: { secao: number; cor: string; hex: string }[] = [
+  { secao: 0.5, cor: "branca", hex: "#f8fafc" },
+  { secao: 0.75, cor: "cinza", hex: "#9ca3af" },
+  { secao: 1, cor: "vermelha", hex: "#dc2626" },
+  { secao: 1.5, cor: "preta", hex: "#1f2937" },
+  { secao: 2.5, cor: "azul", hex: "#2563eb" },
+  { secao: 4, cor: "cinza", hex: "#9ca3af" },
+  { secao: 6, cor: "amarela", hex: "#facc15" },
+  { secao: 10, cor: "vermelha", hex: "#dc2626" },
+  { secao: 16, cor: "azul", hex: "#2563eb" },
+  { secao: 25, cor: "amarela", hex: "#facc15" },
+  { secao: 35, cor: "vermelha", hex: "#dc2626" },
+  { secao: 50, cor: "azul", hex: "#2563eb" },
+  { secao: 70, cor: "amarela", hex: "#facc15" },
+];
+
+export const PONTEIRAS_CONFERIR = "Cores das ponteiras pelo código DIN 46228-4; alguns fabricantes usam o código francês — conferir na embalagem.";
+
+/** Cor da ponteira para a seção (a menor faixa que comporta o cabo). */
+export function corPonteira(secao: number) {
+  return CORES_PONTEIRA.find((c) => c.secao >= secao - 1e-9) ?? CORES_PONTEIRA[CORES_PONTEIRA.length - 1];
+}
+
+/** A ponta da ligação entra num borne (terminal de peça ou barra) e leva ponteira? */
+function pontaComPonteira(p: Ligacao["de"]) {
+  return p.k === "term" || p.k === "barra";
+}
+
+/** Ligações feitas com cabo (pente e barramento plug-in não usam ponteira). */
+function usaCabo(l: Ligacao) {
+  return (l.modo === "cabo" || l.modo === "ponte" || l.modo === "saida") && l.secao > 0;
+}
+
+/** Pontas de cabo que levam ponteira: [ligação, lado]. */
+export function pontasComPonteira(r: ResultadoLigacoes) {
+  const pontas: { ligacao: Ligacao; lado: "de" | "para" }[] = [];
+  for (const l of r.ligacoes) {
+    if (!usaCabo(l)) continue;
+    if (pontaComPonteira(l.de)) pontas.push({ ligacao: l, lado: "de" });
+    if (pontaComPonteira(l.para)) pontas.push({ ligacao: l, lado: "para" });
+  }
+  return pontas;
+}
+
+export interface ItemPonteira {
+  secao: number;
+  cor: string;
+  hex: string;
+  quantidade: number;
+}
+
+/** Quantidade de ponteiras por bitola (uma por ponta de cabo que entra em borne). */
+export function ponteirasPorBitola(r: ResultadoLigacoes): ItemPonteira[] {
+  const mapa = new Map<number, number>();
+  for (const { ligacao } of pontasComPonteira(r)) mapa.set(ligacao.secao, (mapa.get(ligacao.secao) ?? 0) + 1);
+  return [...mapa]
+    .sort((a, b) => a[0] - b[0])
+    .map(([secao, quantidade]) => {
+      const c = corPonteira(secao);
+      return { secao, cor: c.cor, hex: c.hex, quantidade };
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Resumos para materiais e compras
 // ---------------------------------------------------------------------------
 
@@ -1327,7 +1398,8 @@ export function resumoLigacoes(q: QuadroDados, analise: AnaliseQuadro = analisar
   return {
     pentes: r.pentes.map((p) => ({ tipo: p.tipo, modulos: p.modulos })),
     cabosInternos: cabosInternos(r),
-    ponteiras: r.ligacoes.filter((l) => l.modo === "cabo" || l.modo === "ponte" || l.modo === "saida").length * 2,
+    ponteiras: pontasComPonteira(r).length,
+    ponteirasPorBitola: ponteirasPorBitola(r),
   };
 }
 
@@ -1345,6 +1417,13 @@ export function listaMateriaisCompleta(q: QuadroDados, analise: AnaliseQuadro = 
       descricao: `Cabo flexível ${fmt(c.secao)} mm² — interno do quadro, ${c.cor}`,
       quantidade: Math.max(1, Math.ceil(c.metros * 1.2)),
       unidade: "m",
+    });
+  }
+  for (const p of ponteirasPorBitola(r)) {
+    extra.push({
+      descricao: `Ponteira tubular isolada ${fmt(p.secao)} mm² (${p.cor})`,
+      quantidade: Math.ceil(p.quantidade * 1.1),
+      unidade: "un",
     });
   }
   return [...base, ...extra];

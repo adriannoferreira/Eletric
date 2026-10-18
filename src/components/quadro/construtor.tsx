@@ -7,9 +7,11 @@ import {
   FileDown,
   GitBranch,
   Loader2,
+  Maximize2,
   MoreVertical,
   Pencil,
   Plus,
+  Power,
   Save,
   Settings2,
   Tags,
@@ -38,7 +40,8 @@ import { Campo } from "@/components/ui";
 import type { ItemCatalogoSimples } from "@/lib/eletrica/orcamento-quadro";
 import { analisarQuadro } from "@/lib/eletrica/calculo";
 import { configLigacoes, gerarLigacoes, listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
-import { modulosOcupados, type Peca, peca } from "@/lib/eletrica/pecas";
+import { modulosOcupados, padraoDaPeca, type Peca, peca } from "@/lib/eletrica/pecas";
+import { alternarInverter, energizacao } from "@/lib/eletrica/simulador";
 import {
   type Circuito,
   type Componente,
@@ -62,7 +65,8 @@ import { EditorComponente } from "./editor-componente";
 import { Folha } from "./folha";
 import { FormCircuito, PRESETS } from "./form-circuito";
 import { ListaMateriais } from "./materiais";
-import { adicionarComponente, cabe, disjuntorSugerido, fasesSugeridas } from "./montagem";
+import { adicionarComponente, cabe, disjuntorSugerido, duplicarComponente, fasesSugeridas, moverComponente } from "./montagem";
+import { Apresentacao, AvisoDesfazer, BarraFerramentas } from "./simulador-controles";
 import { PainelCircuitos, QuadroCargas } from "./painel-circuitos";
 import { PainelFases } from "./painel-fases";
 import type { DestaquePeca } from "./peca-visual";
@@ -154,10 +158,20 @@ export function Construtor({
   const analise = useMemo(() => analisarQuadro(dados), [dados]);
   const ligacoes = useMemo(() => gerarLigacoes(dados, analise), [dados, analise]);
   const materiais = useMemo(() => listaMateriaisCompleta(dados, analise), [dados, analise]);
-  const [vista, setVista] = useState<"porta" | "espelho" | "montagem" | "ligacoes">("montagem");
+  const [vista, setVista] = useState<"porta" | "espelho" | "montagem" | "ligacoes" | "simulador">("montagem");
   const [animar, setAnimar] = useState(false);
+  // Simulador: estado liga/desliga é só visual (não vai para o projeto)
+  const [desligados, setDesligados] = useState<ReadonlySet<string>>(new Set());
+  const [pecaSim, setPecaSim] = useState<string | null>(null);
+  const [movendo, setMovendo] = useState<string | null>(null);
+  const [desfazer, setDesfazer] = useState<{ texto: string; dados: QuadroDados } | null>(null);
+  const [apresentacao, setApresentacao] = useState(false);
+  const fecharApresentacao = useCallback(() => setApresentacao(false), []);
+  const fecharDesfazer = useCallback(() => setDesfazer(null), []);
   const [ligSel, setLigSel] = useState<string | null>(null);
   const ligacaoSelecionada = ligSel ? ligacoes.ligacoes.find((l) => l.id === ligSel) : undefined;
+  const simulando = vista === "simulador" || apresentacao;
+  const energia = useMemo(() => (simulando ? energizacao(dados, ligacoes, desligados) : undefined), [simulando, dados, ligacoes, desligados]);
   const alterado = JSON.stringify([nome, clienteId, dados]) !== salvo;
 
   useEffect(() => {
@@ -241,6 +255,73 @@ export function Construtor({
     }));
     setSel(null);
   }
+
+  // ---- Simulador -----------------------------------------------------------
+  const alternarPeca = (cid: string) =>
+    setDesligados((d) => {
+      const n = new Set(d);
+      if (n.has(cid)) n.delete(cid);
+      else n.add(cid);
+      return n;
+    });
+  const dispararDR = (cid: string) => setDesligados((d) => new Set(d).add(cid));
+  const podeSoltar = (cid: string, f: number, pos: number) => {
+    const c = dados.componentes.find((x) => x.id === cid);
+    const p = c && peca(c.pecaId);
+    return Boolean(c && p && cabe(dados, f, pos, modulosOcupados(p), cid, padraoDaPeca(p)));
+  };
+  const soltarPeca = (cid: string, f: number, pos: number) => {
+    const q = moverComponente(dados, cid, f, pos);
+    if (q) setDados(q);
+    setMovendo(null);
+  };
+  const duplicarPeca = (cid: string) => {
+    const r = duplicarComponente(dados, cid);
+    if (!r) return alert("Sem espaço livre no quadro para duplicar esta peça.");
+    setDados(r.quadro);
+    setPecaSim(r.id);
+  };
+  const apagarPeca = (cid: string) => {
+    const nomePeca = peca(dados.componentes.find((c) => c.id === cid)?.pecaId ?? "")?.nome ?? "Peça";
+    setDesfazer({ texto: `${nomePeca} apagada`, dados });
+    removerComponente(cid);
+    setPecaSim(null);
+    setMovendo(null);
+  };
+  const ferramentas = pecaSim ? (
+    <BarraFerramentas
+      movendo={movendo === pecaSim}
+      invertida={Boolean(configLigacoes(dados).pecas[pecaSim]?.inverter)}
+      aoMover={() => setMovendo((m) => (m === pecaSim ? null : pecaSim))}
+      aoDuplicar={() => duplicarPeca(pecaSim)}
+      aoInverter={() => setDados((q) => alternarInverter(q, pecaSim))}
+      aoApagar={() => apagarPeca(pecaSim)}
+      aoEditar={() => setSel({ tipo: "peca", id: pecaSim })}
+    />
+  ) : null;
+  const visualSimulador = (zoom: number) => (
+    <LigacoesVisual
+      dados={dados}
+      resultado={ligacoes}
+      nome={nome}
+      escala={zoom}
+      tema="simulador"
+      animar={animar}
+      energia={energia}
+      desligados={desligados}
+      aoAlavanca={alternarPeca}
+      aoTesteDR={dispararDR}
+      pecaSelecionada={pecaSim}
+      aoTocarPeca={(cid) => {
+        setPecaSim(cid);
+        if (cid !== movendo) setMovendo(null);
+      }}
+      podeSoltar={podeSoltar}
+      aoSoltarPeca={soltarPeca}
+      movendo={movendo}
+      ferramentas={apresentacao ? null : ferramentas}
+    />
+  );
 
   function novoCircuitoPara(disjuntorId?: string) {
     const ordem = dados.circuitos.length + 1;
@@ -424,29 +505,38 @@ export function Construtor({
       {/* O quadro */}
       <div className="card overflow-hidden">
         <div className="no-print flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <div className="flex gap-1 rounded-xl bg-surface-2 p-1">
+          <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1">
             {(
               [
                 ["porta", "Com porta"],
                 ["espelho", "Espelho"],
                 ["montagem", "Montagem"],
                 ["ligacoes", "Ligações"],
+                ["simulador", "Simulador"],
               ] as const
             ).map(([v, r]) => (
               <button
                 key={v}
-                onClick={() => setVista(v)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium sm:text-sm ${vista === v ? "bg-surface shadow-sm" : "text-muted"}`}
+                onClick={() => {
+                  setVista(v);
+                  if (v === "simulador" && vista !== "simulador") setAnimar(true);
+                }}
+                className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium sm:text-sm ${vista === v ? "bg-surface shadow-sm" : "text-muted"}`}
               >
                 {r}
               </button>
             ))}
           </div>
-          {vista === "ligacoes" && (
+          {(vista === "ligacoes" || vista === "simulador") && (
             <label className="flex items-center gap-1.5 text-xs">
               <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={animar} onChange={(e) => setAnimar(e.target.checked)} />
               Animar corrente
             </label>
+          )}
+          {vista === "simulador" && desligados.size > 0 && (
+            <button className="btn btn-secondary px-2.5 py-1 text-xs" onClick={() => setDesligados(new Set())}>
+              <Power className="size-3.5" /> Religar tudo
+            </button>
           )}
           <div className="flex items-center gap-1">
             <Ajuda titulo="Visões do quadro" alinhar="direita">
@@ -455,8 +545,14 @@ export function Construtor({
                 <li><b>Espelho:</b> só as alavancas aparecem. Toque numa peça para editar.</li>
                 <li><b>Montagem:</b> trilhos, bornes e barras. Toque num espaço vazio para colocar uma peça.</li>
                 <li><b>Ligações:</b> toque num cabo para ver de onde sai, para onde vai, cor e seção.</li>
+                <li><b>Simulador:</b> toque na alavanca para ligar/desligar (só visual) e no T do DR para testar. Toque numa peça para mover, duplicar, inverter ou apagar — ou arraste a peça selecionada.</li>
               </ul>
             </Ajuda>
+            {vista === "simulador" && (
+              <button className="btn btn-ghost p-2" onClick={() => setApresentacao(true)} aria-label="Modo apresentação (tela cheia)" title="Modo apresentação">
+                <Maximize2 className="size-4" />
+              </button>
+            )}
             <button className="btn btn-ghost p-2" disabled={escala === 0} onClick={() => setEscala((e) => e - 1)} aria-label="Diminuir zoom">
               <ZoomOut className="size-4" />
             </button>
@@ -465,9 +561,11 @@ export function Construtor({
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto bg-surface-2 p-4">
+        <div className={`overflow-x-auto p-4 ${vista === "simulador" ? "bg-[#071538]" : "bg-surface-2"}`}>
           <div className="mx-auto w-max">
-            {vista !== "ligacoes" ? (
+            {vista === "simulador" ? (
+              visualSimulador(ESCALAS[escala])
+            ) : vista !== "ligacoes" ? (
               <QuadroVisual
                 dados={dados}
                 nome={nome}
@@ -848,6 +946,30 @@ export function Construtor({
         <h2 className="mb-2 mt-6 font-bold">Quadro de cargas</h2>
         <QuadroCargas analise={analise} />
       </div>
+      {apresentacao && (
+        <Apresentacao
+          aoFechar={fecharApresentacao}
+          aoZoom={(d) => setEscala((e) => Math.min(ESCALAS.length - 1, Math.max(0, e + d)))}
+          podeMenos={escala > 0}
+          podeMais={escala < ESCALAS.length - 1}
+          animar={animar}
+          aoAnimar={() => setAnimar((a) => !a)}
+          desligados={desligados.size}
+          aoReligar={() => setDesligados(new Set())}
+        >
+          {visualSimulador(ESCALAS[escala] * 1.25)}
+        </Apresentacao>
+      )}
+      {desfazer && (
+        <AvisoDesfazer
+          texto={desfazer.texto}
+          aoDesfazer={() => {
+            setDados(desfazer.dados);
+            setDesfazer(null);
+          }}
+          aoFechar={fecharDesfazer}
+        />
+      )}
     </div>
   );
 }

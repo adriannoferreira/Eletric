@@ -62,7 +62,8 @@ describe("lista de compras", () => {
   it("agrupa por categoria e inclui acessórios que costumam faltar", () => {
     const cats = new Set(lista.itens.map((i) => i.categoria));
     for (const c of ["protecao", "cabos", "quadro", "aterramento", "infraestrutura"]) expect(cats.has(c as never)).toBe(true);
-    for (const chave of ["quadro:ponteiras", "quadro:pente", "quadro:abracadeiras", "quadro:fita", "quadro:identificacao", "aterr:haste"]) {
+    expect(lista.itens.some((i) => i.chave.startsWith("quadro:ponteiras:"))).toBe(true);
+    for (const chave of ["quadro:pente", "quadro:abracadeiras", "quadro:fita", "quadro:identificacao", "aterr:haste"]) {
       expect(lista.itens.some((i) => i.chave === chave)).toBe(true);
     }
   });
