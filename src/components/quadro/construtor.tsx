@@ -28,12 +28,14 @@ import {
   salvarCompras,
   salvarInspecoes,
   salvarLaudo,
+  salvarLigacoesFeitas,
   salvarManutencao,
   salvarQuadro,
 } from "@/app/(app)/quadros/actions";
 import { Campo } from "@/components/ui";
 import type { ItemCatalogoSimples } from "@/lib/eletrica/orcamento-quadro";
-import { analisarQuadro, listaMateriais } from "@/lib/eletrica/calculo";
+import { analisarQuadro } from "@/lib/eletrica/calculo";
+import { configLigacoes, gerarLigacoes, listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
 import { modulosOcupados, type Peca, peca } from "@/lib/eletrica/pecas";
 import {
   type Circuito,
@@ -60,6 +62,8 @@ import { PainelCircuitos, QuadroCargas } from "./painel-circuitos";
 import { PainelFases } from "./painel-fases";
 import type { DestaquePeca } from "./peca-visual";
 import { QuadroVisual } from "./quadro-visual";
+import { LigacoesVisual } from "./ligacoes-visual";
+import { DetalheLigacao, PainelLigacoes } from "./painel-ligacoes";
 import { RevisaoIA } from "./revisao-ia";
 import { SeletorPeca } from "./seletor-peca";
 
@@ -73,6 +77,7 @@ type Selecao =
 
 const ABAS = [
   { id: "circuitos", rotulo: "Circuitos" },
+  { id: "ligacoes", rotulo: "Ligações" },
   { id: "alertas", rotulo: "Verificação" },
   { id: "fases", rotulo: "Fases" },
   { id: "cargas", rotulo: "Quadro de cargas" },
@@ -129,7 +134,12 @@ export function Construtor({
   const [, iniciarAcao] = useTransition();
 
   const analise = useMemo(() => analisarQuadro(dados), [dados]);
-  const materiais = useMemo(() => listaMateriais(dados, analise), [dados, analise]);
+  const ligacoes = useMemo(() => gerarLigacoes(dados, analise), [dados, analise]);
+  const materiais = useMemo(() => listaMateriaisCompleta(dados, analise), [dados, analise]);
+  const [vista, setVista] = useState<"pecas" | "ligacoes">("pecas");
+  const [animar, setAnimar] = useState(false);
+  const [ligSel, setLigSel] = useState<string | null>(null);
+  const ligacaoSelecionada = ligSel ? ligacoes.ligacoes.find((l) => l.id === ligSel) : undefined;
   const alterado = JSON.stringify([nome, clienteId, dados]) !== salvo;
 
   useEffect(() => {
@@ -282,8 +292,9 @@ export function Construtor({
     return false;
   };
 
-  const nErros = [...analise.alertas, ...analise.circuitos.flatMap((r) => r.alertas)].filter((a) => a.nivel === "erro").length;
-  const nAvisos = [...analise.alertas, ...analise.circuitos.flatMap((r) => r.alertas)].filter((a) => a.nivel === "aviso").length;
+  const todosAlertas = [...analise.alertas, ...analise.circuitos.flatMap((r) => r.alertas), ...ligacoes.alertas];
+  const nErros = todosAlertas.filter((a) => a.nivel === "erro").length;
+  const nAvisos = todosAlertas.filter((a) => a.nivel === "aviso").length;
 
   return (
     <div className="space-y-4">
@@ -391,8 +402,29 @@ export function Construtor({
 
       {/* O quadro */}
       <div className="card overflow-hidden">
-        <div className="no-print flex items-center justify-between border-b border-border px-3 py-2">
-          <p className="text-xs text-muted">Toque num espaço vazio para colocar uma peça, ou numa peça para editar.</p>
+        <div className="no-print flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <div className="flex gap-1 rounded-xl bg-surface-2 p-1">
+            {(
+              [
+                ["pecas", "Peças"],
+                ["ligacoes", "Ligações"],
+              ] as const
+            ).map(([v, r]) => (
+              <button
+                key={v}
+                onClick={() => setVista(v)}
+                className={`rounded-lg px-3 py-1 text-sm font-medium ${vista === v ? "bg-surface shadow-sm" : "text-muted"}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          {vista === "ligacoes" && (
+            <label className="flex items-center gap-1.5 text-xs">
+              <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={animar} onChange={(e) => setAnimar(e.target.checked)} />
+              Animar corrente
+            </label>
+          )}
           <div className="flex items-center gap-1">
             <button className="btn btn-ghost p-2" disabled={escala === 0} onClick={() => setEscala((e) => e - 1)} aria-label="Diminuir zoom">
               <ZoomOut className="size-4" />
@@ -402,19 +434,41 @@ export function Construtor({
             </button>
           </div>
         </div>
+        <p className="no-print px-3 pt-2 text-xs text-muted">
+          {vista === "pecas"
+            ? "Toque num espaço vazio para colocar uma peça, ou numa peça para editar."
+            : "Toque num cabo para ver de onde sai, para onde vai, cor e seção."}
+        </p>
         <div className="overflow-x-auto bg-surface-2 p-4">
           <div className="mx-auto w-max">
-            <QuadroVisual
-              dados={dados}
-              nome={nome}
-              escala={ESCALAS[escala]}
-              selecionado={compSel?.id ?? null}
-              destaques={destaques}
-              aoTocarVazio={(fileira, posicao) => setSel({ tipo: "vazio", fileira, posicao })}
-              aoTocarPeca={(cid) => setSel({ tipo: "peca", id: cid })}
-            />
+            {vista === "pecas" ? (
+              <QuadroVisual
+                dados={dados}
+                nome={nome}
+                escala={ESCALAS[escala]}
+                selecionado={compSel?.id ?? null}
+                destaques={destaques}
+                aoTocarVazio={(fileira, posicao) => setSel({ tipo: "vazio", fileira, posicao })}
+                aoTocarPeca={(cid) => setSel({ tipo: "peca", id: cid })}
+              />
+            ) : (
+              <LigacoesVisual
+                dados={dados}
+                resultado={ligacoes}
+                nome={nome}
+                escala={ESCALAS[escala]}
+                selecionada={ligSel}
+                aoSelecionar={setLigSel}
+                animar={animar}
+              />
+            )}
           </div>
         </div>
+        {vista === "ligacoes" && ligacaoSelecionada && (
+          <div className="no-print p-3">
+            <DetalheLigacao dados={dados} resultado={ligacoes} ligacao={ligacaoSelecionada} aoMudar={setDados} aoFechar={() => setLigSel(null)} />
+          </div>
+        )}
       </div>
 
       {/* Abas de análise */}
@@ -437,11 +491,37 @@ export function Construtor({
             aoNovo={() => novoCircuitoPara()}
           />
         )}
+        {aba === "ligacoes" && (
+          <PainelLigacoes
+            id={id}
+            dados={dados}
+            resultado={ligacoes}
+            selecionada={ligSel}
+            aoSelecionar={(lid) => {
+              setLigSel(lid);
+              setVista("ligacoes");
+            }}
+            aoMudar={setDados}
+            aoMarcar={(feitas) => {
+              // Só "feitas" é gravado agora; cores/ajustes continuam dependendo do Salvar.
+              setDados((q) => ({ ...q, ligacoes: { ...configLigacoes(q), feitas } }));
+              setSalvo((sv) => {
+                const [n, c, d] = JSON.parse(sv);
+                return JSON.stringify([n, c, { ...d, ligacoes: { ...configLigacoes(d), feitas } }]);
+              });
+              salvarLigacoesFeitas(id, feitas);
+            }}
+          />
+        )}
         {aba === "alertas" && (
           <div className="space-y-4">
             <div>
               <h3 className="mb-2 font-semibold">Quadro</h3>
               <ListaAlertas alertas={analise.alertas} vazio="Nenhum problema geral encontrado." />
+            </div>
+            <div>
+              <h3 className="mb-2 font-semibold">Ligações</h3>
+              <ListaAlertas alertas={ligacoes.alertas.filter((a) => a.nivel !== "info")} vazio="Ligações sem problemas." />
             </div>
             {analise.circuitos.map((r, i) =>
               r.alertas.some((a) => a.nivel !== "info") ? (

@@ -198,6 +198,17 @@ export async function salvarCompras(id: number, chaves: string[]) {
     .where(eq(quadros.id, id));
 }
 
+/** Marca as ligações já feitas na montagem (salva só esse campo). */
+export async function salvarLigacoesFeitas(id: number, chaves: string[]) {
+  const lista = [...new Set(chaves.filter((c) => typeof c === "string"))].slice(0, 2000);
+  await db
+    .update(quadros)
+    .set({
+      dados: sql`jsonb_set(${quadros.dados}, '{ligacoes}', coalesce(${quadros.dados}->'ligacoes', '{}'::jsonb) || jsonb_build_object('feitas', ${JSON.stringify(lista)}::jsonb), true)`,
+    })
+    .where(eq(quadros.id, id));
+}
+
 /**
  * Cria um orçamento (rascunho) a partir do quadro salvo: materiais da lista do
  * quadro + mão de obra, com preços do catálogo. Redireciona para o editor.
