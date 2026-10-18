@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Package, RefreshCw, Store } from "lucide-react";
+import { Boxes, Package, RefreshCw, Scale, Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +8,7 @@ const ABAS = [
   { href: "/catalogo", rotulo: "Itens", icone: Package },
   { href: "/catalogo/kits", rotulo: "Kits", icone: Boxes },
   { href: "/catalogo/cotacoes", rotulo: "Cotações", icone: Store },
+  { href: "/catalogo/comparar", rotulo: "Comparar lojas", icone: Scale },
   { href: "/catalogo/precos", rotulo: "Atualizar preços", icone: RefreshCw },
 ];
 

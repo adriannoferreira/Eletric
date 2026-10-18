@@ -3,8 +3,8 @@
 import {
   Boxes,
   Check,
-  ClipboardList,
   ChevronLeft,
+  ClipboardList,
   Copy,
   ExternalLink,
   Loader2,
@@ -13,6 +13,7 @@ import {
   Package,
   Plus,
   Save,
+  Scale,
   Search,
   Trash2,
   Wrench,
@@ -170,6 +171,9 @@ export function EditorOrcamento({
               <a href={`/o/${o.tokenPublico}`} target="_blank" className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
                 <ExternalLink className="size-4" /> Ver como o cliente / PDF
               </a>
+              <Link href={`/catalogo/comparar?orcamento=${o.id}`} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
+                <Scale className="size-4" /> Comparar lojas
+              </Link>
               <button onClick={() => iniciar(() => duplicarOrcamento(o.id))} className="flex w-full items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
                 <Copy className="size-4" /> Duplicar
               </button>

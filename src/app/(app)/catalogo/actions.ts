@@ -10,6 +10,7 @@ import {
   fornecedores,
   kitItens,
   kits,
+  orcamentoItens,
   precosHistorico,
   sinapiItens,
 } from "@/db";
@@ -472,4 +473,47 @@ export async function salvarConfig(_: string | null, form: FormData) {
   await db.update(configPrecos).set(ok.data).where(eq(configPrecos.id, 1));
   revalidar();
   return "ok";
+}
+
+/* ------------------------------ Comparativo ------------------------------ */
+
+/** Pesquisa com IA (até 6 por vez) os itens do comparativo que não têm preço em nenhuma loja. */
+export async function pesquisarSemPrecoIA(catalogoIds: number[]) {
+  const ids = [...new Set(catalogoIds.filter((n) => Number.isInteger(n) && n > 0))].slice(0, 6);
+  let sugestoes = 0;
+  const erros: string[] = [];
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const r = await criarSugestaoIA(id);
+        if (r.ok) sugestoes++;
+        else erros.push(r.mensagem);
+      } catch (e) {
+        erros.push(e instanceof ErroIA ? e.message : "Erro ao pesquisar.");
+      }
+    }),
+  );
+  revalidar();
+  return { pesquisados: ids.length, sugestoes, erros: [...new Set(erros)].slice(0, 3) };
+}
+
+/** Registra o preço de um item numa loja (digitado no comparativo). */
+export async function salvarPrecoLojaManual(catalogoId: number, loja: string, preco: number, fornecedorId?: number | null) {
+  if (!(preco > 0) || !loja.trim()) return "Informe a loja e o preço.";
+  await registrarPrecoLoja(catalogoId, { preco, loja, fornecedorId: fornecedorId ?? null, fonte: "manual" });
+  revalidar();
+  return null;
+}
+
+/** Aplica os preços escolhidos no comparativo aos materiais do orçamento. */
+export async function aplicarPrecosNoOrcamento(orcamentoId: number, precos: { itemId: number; preco: number; descricao?: string }[]) {
+  const validos = precos.filter((p) => Number.isInteger(p.itemId) && p.preco > 0);
+  for (const p of validos) {
+    await db
+      .update(orcamentoItens)
+      .set({ precoUnitario: Math.round(p.preco * 100) / 100, ...(p.descricao ? { descricao: p.descricao.slice(0, 500) } : {}) })
+      .where(and(eq(orcamentoItens.id, p.itemId), eq(orcamentoItens.orcamentoId, orcamentoId)));
+  }
+  revalidatePath(`/orcamentos/${orcamentoId}`);
+  return validos.length;
 }
