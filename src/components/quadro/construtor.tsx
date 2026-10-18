@@ -2,19 +2,37 @@
 
 import {
   AlertTriangle,
+  BookmarkPlus,
   Copy,
+  FileDown,
+  GitBranch,
   Loader2,
   MoreVertical,
+  Pencil,
   Plus,
-  Printer,
   Save,
   Settings2,
+  Tags,
   Trash2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { duplicarQuadro, excluirQuadro, salvarQuadro } from "@/app/(app)/quadros/actions";
+import {
+  duplicarQuadro,
+  excluirQuadro,
+  gerarOrcamentoDoQuadro,
+  salvarArt,
+  salvarComoModelo,
+  salvarCompras,
+  salvarInspecoes,
+  salvarLaudo,
+  salvarManutencao,
+  salvarQuadro,
+} from "@/app/(app)/quadros/actions";
+import { Campo } from "@/components/ui";
+import type { ItemCatalogoSimples } from "@/lib/eletrica/orcamento-quadro";
 import { analisarQuadro, listaMateriais } from "@/lib/eletrica/calculo";
 import { modulosOcupados, type Peca, peca } from "@/lib/eletrica/pecas";
 import {
@@ -26,6 +44,13 @@ import {
 } from "@/lib/eletrica/tipos";
 import { ListaAlertas } from "./alertas";
 import { ConfigQuadro } from "./config-quadro";
+import { BotaoOrcamento } from "./dialogo-orcamento";
+import { AssistenteArt, type ClienteResumo, EditorLaudo, type PerfilResumo } from "./laudo-art";
+import { PainelCompras } from "./lista-compras";
+import { type Instrumento, PainelInspecao } from "./painel-inspecao";
+import { PainelManutencao } from "./painel-manutencao";
+import { PainelProjeto } from "./painel-projeto";
+import { VisorUnifilar } from "./visor-unifilar";
 import { EditorComponente } from "./editor-componente";
 import { Folha } from "./folha";
 import { FormCircuito, PRESETS } from "./form-circuito";
@@ -53,6 +78,12 @@ const ABAS = [
   { id: "cargas", rotulo: "Quadro de cargas" },
   { id: "materiais", rotulo: "Materiais" },
   { id: "ia", rotulo: "Revisão IA" },
+  { id: "projeto", rotulo: "Projeto" },
+  { id: "compras", rotulo: "Compras" },
+  { id: "inspecao", rotulo: "Inspeção" },
+  { id: "laudo", rotulo: "Laudo" },
+  { id: "art", rotulo: "ART/TRT" },
+  { id: "manutencao", rotulo: "Manutenção" },
 ] as const;
 type Aba = (typeof ABAS)[number]["id"];
 
@@ -64,19 +95,33 @@ export function Construtor({
   clienteIdInicial,
   dadosIniciais,
   clientes,
+  catalogo,
+  perfil,
+  instrumentos,
+  cliente,
+  valorContrato,
+  abaInicial,
 }: {
   id: number;
   nomeInicial: string;
   clienteIdInicial: number | null;
   dadosIniciais: QuadroDados;
   clientes: { id: number; nome: string }[];
+  catalogo: ItemCatalogoSimples[];
+  perfil: PerfilResumo;
+  instrumentos: Instrumento[];
+  cliente: ClienteResumo;
+  valorContrato: { valor: number; titulo: string } | null;
+  abaInicial?: string;
 }) {
   const [dados, setDados] = useState(dadosIniciais);
   const [nome, setNome] = useState(nomeInicial);
   const [clienteId, setClienteId] = useState(clienteIdInicial);
   const [salvo, setSalvo] = useState(() => JSON.stringify([nomeInicial, clienteIdInicial, dadosIniciais]));
   const [sel, setSel] = useState<Selecao>(null);
-  const [aba, setAba] = useState<Aba>("circuitos");
+  const [aba, setAba] = useState<Aba>(() => (ABAS.some((a) => a.id === abaInicial) ? (abaInicial as Aba) : "circuitos"));
+  const [verUnifilar, setVerUnifilar] = useState(false);
+  const [salvandoModelo, setSalvandoModelo] = useState(false);
   const [escala, setEscala] = useState(2);
   const [menu, setMenu] = useState(false);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
@@ -103,6 +148,26 @@ export function Construtor({
       } else setErroSalvar(r.erro);
     });
   }, [id, nome, clienteId, dados]);
+
+  /**
+   * Partes que já foram gravadas no banco por ações próprias (compras, inspeção,
+   * laudo, ART, manutenção, memorial): atualiza o estado e a "versão salva" para
+   * não acusar alteração pendente.
+   */
+  const aplicarPersistido = useCallback((patch: Partial<QuadroDados>) => {
+    setDados((q) => ({ ...q, ...patch }));
+    setSalvo((s) => {
+      const [n, c, d] = JSON.parse(s);
+      return JSON.stringify([n, c, { ...d, ...patch }]);
+    });
+  }, []);
+
+  const selo = {
+    eletricista: [perfil.nome || perfil.empresa, perfil.registroProfissional].filter(Boolean).join(" — "),
+    cliente: clientes.find((c) => c.id === clienteId)?.nome ?? "",
+    obra: nome,
+    data: new Date().toLocaleDateString("pt-BR"),
+  };
 
   // Destaque das peças conforme o resultado do circuito
   const destaques = useMemo(() => {
@@ -238,10 +303,21 @@ export function Construtor({
             <MoreVertical className="size-4" />
           </button>
           {menu && (
-            <div className="absolute right-0 z-30 mt-1 w-48 rounded-xl border border-border bg-surface p-1 shadow-lg" onMouseLeave={() => setMenu(false)}>
-              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); window.print(); }}>
-                <Printer className="size-4" /> Imprimir
+            <div className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-border bg-surface p-1 shadow-lg" onMouseLeave={() => setMenu(false)}>
+              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setSalvandoModelo(true); }}>
+                <BookmarkPlus className="size-4" /> Salvar como modelo
               </button>
+              <a className="btn btn-ghost w-full justify-start" href={`/quadros/${id}/imprimir?doc=etiquetas`} target="_blank" onClick={() => setMenu(false)}>
+                <Tags className="size-4" /> Etiquetas do quadro
+              </a>
+              <button className="btn btn-ghost w-full justify-start" onClick={() => { setMenu(false); setAba("art"); }}>
+                <Pencil className="size-4" /> Preparar dados da ART/TRT
+              </button>
+              {dados.projeto && (
+                <Link className="btn btn-ghost w-full justify-start" href={`/quadros/projeto?quadro=${id}`}>
+                  <Pencil className="size-4" /> Editar dados da obra
+                </Link>
+              )}
               <button
                 className="btn btn-ghost w-full justify-start"
                 onClick={() => {
@@ -270,6 +346,33 @@ export function Construtor({
         </button>
       </div>
       {alterado && <p className="no-print -mt-2 text-xs text-warn">Alterações não salvas</p>}
+
+      {/* Ações principais */}
+      <div className="no-print -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+        <a
+          href={`/quadros/${id}/imprimir?auto=1`}
+          target="_blank"
+          className="btn btn-primary shrink-0"
+          onClick={(e) => {
+            if (alterado && !confirm("Há alterações não salvas — o PDF usa a versão salva. Salve antes. Continuar mesmo assim?")) e.preventDefault();
+          }}
+        >
+          <FileDown className="size-4" /> Exportar PDF
+        </a>
+        <button className="btn btn-secondary shrink-0" onClick={() => setVerUnifilar(true)}>
+          <GitBranch className="size-4" /> Unifilar
+        </button>
+        <BotaoOrcamento
+          className="btn btn-secondary shrink-0"
+          clienteId={clienteId}
+          clientes={clientes}
+          aviso={alterado ? "O orçamento usa a versão salva do quadro. Salve antes para incluir as últimas alterações. Continuar?" : undefined}
+          acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
+        />
+        <a href={`/quadros/${id}/imprimir?doc=etiquetas`} target="_blank" className="btn btn-secondary shrink-0">
+          <Tags className="size-4" /> Etiquetas
+        </a>
+      </div>
       {erroSalvar && <p className="text-sm text-danger">{erroSalvar}</p>}
 
       {/* Resumo */}
@@ -363,6 +466,89 @@ export function Construtor({
         )}
         {aba === "materiais" && <ListaMateriais itens={materiais} />}
         {aba === "ia" && <RevisaoIA nome={nome} dados={dados} analise={analise} />}
+        {aba === "projeto" && (
+          <PainelProjeto
+            id={id}
+            nome={nome}
+            dados={dados}
+            analise={analise}
+            alterado={alterado}
+            aoMudarMemorial={(memorial) => aplicarPersistido({ memorial })}
+            aoVerUnifilar={() => setVerUnifilar(true)}
+            botaoOrcamento={
+              <BotaoOrcamento
+                clienteId={clienteId}
+                clientes={clientes}
+                aviso={alterado ? "O orçamento usa a versão salva do quadro. Continuar?" : undefined}
+                acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
+              />
+            }
+          />
+        )}
+        {aba === "compras" && (
+          <PainelCompras
+            id={id}
+            nome={nome}
+            dados={dados}
+            analise={analise}
+            catalogo={catalogo}
+            aoMarcar={(compras) => {
+              aplicarPersistido({ compras });
+              salvarCompras(id, compras);
+            }}
+          />
+        )}
+        {aba === "inspecao" && (
+          <PainelInspecao
+            id={id}
+            nome={nome}
+            dados={dados}
+            responsavelPadrao={perfil.nome}
+            instrumentos={instrumentos}
+            aoSalvar={(inspecoes) => {
+              aplicarPersistido({ inspecoes });
+              salvarInspecoes(id, inspecoes);
+            }}
+          />
+        )}
+        {aba === "laudo" && (
+          <EditorLaudo
+            id={id}
+            dados={dados}
+            perfil={perfil}
+            aoSalvar={async (laudo) => {
+              const r = await salvarLaudo(id, laudo);
+              if (r.ok) aplicarPersistido({ laudo: r.laudo });
+            }}
+          />
+        )}
+        {aba === "art" && (
+          <AssistenteArt
+            dados={dados}
+            perfil={perfil}
+            cliente={clienteId === clienteIdInicial ? cliente : null}
+            valorContrato={clienteId === clienteIdInicial ? valorContrato : null}
+            aoSalvar={(art) => {
+              aplicarPersistido({ art });
+              salvarArt(id, art);
+            }}
+          />
+        )}
+        {aba === "manutencao" && (
+          <PainelManutencao
+            id={id}
+            nome={nome}
+            dados={dados}
+            tecnicoPadrao={perfil.nome}
+            cliente={clienteId === clienteIdInicial && cliente ? { nome: cliente.nome, telefone: cliente.telefone } : null}
+            clienteId={clienteId}
+            clientes={clientes}
+            aoSalvar={(manutencao) => {
+              aplicarPersistido({ manutencao });
+              salvarManutencao(id, manutencao);
+            }}
+          />
+        )}
       </section>
 
       {/* Folhas */}
@@ -471,6 +657,31 @@ export function Construtor({
         rodape={<button className="btn btn-primary ml-auto" onClick={() => setSel(null)}>Pronto</button>}
       >
         <ConfigQuadro dados={dados} aoMudar={setDados} clientes={clientes} clienteId={clienteId} aoMudarCliente={setClienteId} />
+      </Folha>
+
+      {verUnifilar && (
+        <VisorUnifilar id={id} dados={dados} analise={analise} selo={selo} alterado={alterado} aoFechar={() => setVerUnifilar(false)} />
+      )}
+
+      <Folha titulo="Salvar como modelo" aberta={salvandoModelo} aoFechar={() => setSalvandoModelo(false)}>
+        <form
+          className="space-y-4"
+          action={async (f) => {
+            const r = await salvarComoModelo(String(f.get("nome") ?? ""), String(f.get("descricao") ?? ""), dados);
+            if (!r.ok) return alert(r.erro);
+            setSalvandoModelo(false);
+            alert("Modelo salvo! Ele aparece em Quadros → Modelos.");
+          }}
+        >
+          <Campo rotulo="Nome do modelo">
+            <input name="nome" defaultValue={nome} required className="input" />
+          </Campo>
+          <Campo rotulo="Descrição curta">
+            <input name="descricao" placeholder="Ex.: casa 2 quartos, bifásico, 2 chuveiros" className="input" />
+          </Campo>
+          <p className="text-xs text-muted">O modelo guarda a montagem atual (peças e circuitos), sem cliente, inspeções ou documentos.</p>
+          <button className="btn btn-primary w-full">Salvar modelo</button>
+        </form>
       </Folha>
 
       {/* Na impressão, o quadro de cargas sai junto */}

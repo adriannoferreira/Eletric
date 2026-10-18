@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, FileDown, Loader2, Pencil, Sparkles } from "lucide-react";
+import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Sparkles, Tags } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { salvarMemorial } from "@/app/(app)/quadros/actions";
@@ -41,6 +41,8 @@ export function PainelProjeto({
   analise,
   alterado,
   aoMudarMemorial,
+  aoVerUnifilar,
+  botaoOrcamento,
 }: {
   id: number;
   nome: string;
@@ -48,6 +50,8 @@ export function PainelProjeto({
   analise: AnaliseQuadro;
   alterado: boolean;
   aoMudarMemorial: (m: QuadroDados["memorial"]) => void;
+  aoVerUnifilar: () => void;
+  botaoOrcamento: React.ReactNode;
 }) {
   const demanda = useMemo(() => demandaDoQuadro(dados), [dados]);
   const materiais = useMemo(() => listaMateriais(dados, analise), [dados, analise]);
@@ -89,6 +93,13 @@ export function PainelProjeto({
           }}
         >
           <FileDown className="size-4" /> Exportar PDF
+        </a>
+        <button onClick={aoVerUnifilar} className="btn btn-secondary">
+          <GitBranch className="size-4" /> Unifilar em tela cheia
+        </button>
+        {botaoOrcamento}
+        <a href={`/quadros/${id}/imprimir?doc=etiquetas`} target="_blank" className="btn btn-secondary">
+          <Tags className="size-4" /> Etiquetas
         </a>
         {dados.projeto ? (
           <Link href={`/quadros/projeto?quadro=${id}`} className="btn btn-secondary">
