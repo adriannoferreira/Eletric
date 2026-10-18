@@ -1,5 +1,6 @@
 "use client";
 
+import { listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
 import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Sparkles, Tags } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -55,7 +56,7 @@ export function PainelProjeto({
   botaoOrcamento: React.ReactNode;
 }) {
   const demanda = useMemo(() => demandaDoQuadro(dados), [dados]);
-  const materiais = useMemo(() => listaMateriais(dados, analise), [dados, analise]);
+  const materiais = useMemo(() => listaMateriaisCompleta(dados, analise), [dados, analise]);
   const [texto, setTexto] = useState("");
   const [gerando, setGerando] = useState(false);
   const memorial = gerando || texto ? texto : (dados.memorial?.texto ?? "");

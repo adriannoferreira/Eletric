@@ -24,7 +24,10 @@ import { QuadroVisual } from "@/components/quadro/quadro-visual";
 import { Unifilar } from "@/components/quadro/unifilar";
 import { TextoIA } from "@/components/texto-ia";
 import { catalogo, clientes, db, equipamentos, perfil, quadros } from "@/db";
-import { analisarQuadro, listaMateriais } from "@/lib/eletrica/calculo";
+import { analisarQuadro } from "@/lib/eletrica/calculo";
+import { cabosInternos, configLigacoes, gerarLigacoes, listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
+import { LigacoesVisual } from "@/components/quadro/ligacoes-visual";
+import { TabelaLigacoes } from "@/components/quadro/painel-ligacoes";
 import { montarListaCompras } from "@/lib/eletrica/compras";
 import { concessionaria } from "@/lib/eletrica/concessionarias";
 import { gerarChecklist } from "@/lib/eletrica/inspecao";
@@ -41,6 +44,7 @@ const DOCS = {
   inspecao: "Relatório de inspeção",
   laudo: "Laudo técnico",
   manutencao: "Relatório de manutenção preventiva",
+  ligacoes: "Ligações do quadro (montagem)",
 } as const;
 type Doc = keyof typeof DOCS;
 
@@ -97,10 +101,37 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
   const todosAlertas = [
     ...analise.alertas,
     ...analise.circuitos.flatMap((r, i) => r.alertas.map((a) => ({ ...a, mensagem: `Circuito ${i + 1} (${r.circuito.nome}): ${a.mensagem}` }))),
+    ...gerarLigacoes(dados, analise).alertas.map((a) => ({ ...a, mensagem: `Ligações: ${a.mensagem}` })),
   ].filter((a) => a.nivel !== "info");
   const habilitado = Boolean(perfilR.registroProfissional.trim());
   const cab = (titulo: string, subtitulo?: string) => (
     <CabecalhoDoc titulo={titulo} subtitulo={subtitulo} perfil={perfilR} cliente={cliente} nome={q.nome} dados={dados} data={hoje} />
+  );
+
+  const lig = gerarLigacoes(dados, analise);
+  const blocoLigacoes = (
+    <>
+      <Secao titulo="Ligações internas (desenho)" quebra>
+        <div className="flex justify-center [&_svg]:h-auto [&_svg]:max-h-[240mm] [&_svg]:w-full">
+          <LigacoesVisual dados={dados} resultado={lig} nome={q.nome} escala={0.6} />
+        </div>
+        <p className="mt-1 text-xs">
+          Cores: fases {(["R", "S", "T"] as const).map((f) => `${f} ${lig.cores[f]}`).join(", ")}; neutro azul-claro; PE verde-amarelo (NBR 5410
+          6.1.5.3). Linha nos terminais ímpares (1, 3, 5) e carga nos pares (2, 4, 6).
+        </p>
+      </Secao>
+      <Secao titulo="Lista de ligações (sequência de montagem)" quebra>
+        <TabelaLigacoes
+          ligacoes={lig.ligacoes.filter((l) => l.modo !== "barramento")}
+          etapas={[...new Set(lig.ligacoes.filter((l) => l.modo !== "barramento").map((l) => l.etapa))]}
+          feitas={new Set(configLigacoes(dados).feitas)}
+        />
+        <p className="mt-2 text-xs">
+          Cabos internos: {cabosInternos(lig).map((c) => `${c.secao.toLocaleString("pt-BR")} mm² ${c.cor} ≈ ${c.metros.toLocaleString("pt-BR")} m`).join("; ") || "—"}.
+          Comprimentos estimados pelo desenho — conferir na montagem.
+        </p>
+      </Secao>
+    </>
   );
 
   let conteudo: React.ReactNode;
@@ -119,6 +150,14 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
           <TabelaCompras lista={lista} compradas={dados.compras} />
         </Secao>
         <RodapeDoc extra="Quantidades estimadas; confira na obra antes de comprar." />
+      </>
+    );
+  } else if (doc === "ligacoes") {
+    conteudo = (
+      <>
+        {cab("Ligações do quadro", "Desenho e lista de conexões para montagem")}
+        {blocoLigacoes}
+        <RodapeDoc extra="Desenho gerado automaticamente; confira a marcação dos terminais no produto instalado." />
       </>
     );
   } else if (doc === "etiquetas") {
@@ -319,8 +358,9 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
         <Secao titulo="Aterramento e segurança">
           <ListaSeguranca dados={dados} />
         </Secao>
+        {blocoLigacoes}
         <Secao titulo="Lista de materiais">
-          <TabelaMateriais itens={listaMateriais(dados, analise)} />
+          <TabelaMateriais itens={listaMateriaisCompleta(dados, analise)} />
         </Secao>
         <Secao titulo="Lista de compras" quebra>
           <TabelaCompras lista={lista} compradas={dados.compras} />
