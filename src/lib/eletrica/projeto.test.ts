@@ -15,7 +15,17 @@ import {
   tomadasMinimas,
 } from "./projeto";
 import { novoCircuito, type Ambiente } from "./tipos";
-
+import { dentroDoLimite, faixaTensao, gerarChecklist, novaInspecao, resultadoItem, resumirInspecao } from "./inspecao";
+import {
+  gerarChecklistManutencao,
+  itensOrcamentoPendencias,
+  manutencaoPadrao,
+  novaVisita,
+  proximaData,
+  resumirVisita,
+  sugerirPeriodicidade,
+  tendencia,
+} from "./manutencao";
 const amb = (p: Partial<Ambiente>): Ambiente => ({
   id: Math.random().toString(36),
   nome: "X",
@@ -129,7 +139,6 @@ describe("geração do quadro", () => {
   });
 });
 
-import { dentroDoLimite, faixaTensao, gerarChecklist, novaInspecao, resultadoItem, resumirInspecao } from "./inspecao";
 
 describe("inspeção — NBR 5410 seção 7", () => {
   const q = quadroExemplo("casa-bi")!.dados;
@@ -161,5 +170,45 @@ describe("inspeção — NBR 5410 seção 7", () => {
     expect(resumirInspecao(itens, insp).resultado).toBe("aprovado");
     insp.respostas[0].status = "nc";
     expect(resumirInspecao(itens, insp).resultado).toBe("pendencias");
+  });
+});
+
+
+describe("manutenção preventiva", () => {
+  const q = quadroExemplo("casa-bi")!.dados;
+  const itens = gerarChecklistManutencao(q);
+  it("checklist com temperatura por disjuntor, DR, DPS, correntes e tensões", () => {
+    expect(itens.filter((i) => i.id.startsWith("man:temp:")).length).toBe(
+      q.componentes.filter((c) => c.pecaId.startsWith("dj-") || c.pecaId.startsWith("dr-")).length,
+    );
+    expect(itens.some((i) => i.id.startsWith("man:dr:"))).toBe(true);
+    expect(itens.some((i) => i.id.startsWith("man:dps:"))).toBe(true);
+    expect(itens.some((i) => i.id === "man:i:S")).toBe(true);
+  });
+  it("periodicidade e próxima data", () => {
+    expect(sugerirPeriodicidade("comercio")).toBe("trimestral");
+    expect(sugerirPeriodicidade("casa")).toBe("anual");
+    expect(proximaData("2026-01-15", "semestral")).toBe("2026-07-15");
+    expect(manutencaoPadrao(q).visitas).toEqual([]);
+  });
+  it("temperatura alta vira pendência crítica e gera orçamento", () => {
+    const v = novaVisita(manutencaoPadrao(q));
+    const temp = itens.find((i) => i.id.startsWith("man:temp:"))!;
+    v.respostas = [{ itemId: temp.id, status: null, valor: 75, obs: "borne escurecido" }];
+    const r = resumirVisita(itens, v);
+    expect(r.estado).toBe("critico");
+    expect(r.pendencias[0].item.id).toBe(temp.id);
+    const orc = itensOrcamentoPendencias(q, v, []);
+    expect(orc.some((i) => i.tipo === "material")).toBe(true);
+    expect(orc.some((i) => i.descricao.includes("borne escurecido"))).toBe(true);
+  });
+  it("visita sem pendências fica em bom estado e tendência compara com a anterior", () => {
+    const m = manutencaoPadrao(q);
+    const a = novaVisita(m);
+    a.respostas = [{ itemId: "man:i:R", status: null, valor: 20, obs: "" }];
+    const b = { ...novaVisita({ ...m, visitas: [a] }), respostas: [{ itemId: "man:i:R", status: null, valor: 26, obs: "" }] };
+    expect(b.numero).toBe(2);
+    expect(resumirVisita(itens, b).estado).toBe("bom");
+    expect(tendencia(itens, b, a).find((t) => t.item.id === "man:i:R")?.delta).toBe(6);
   });
 });

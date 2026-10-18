@@ -713,6 +713,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
       inspecoes: [],
       laudo: null,
       art: null,
+      manutencao: null,
     },
     demanda,
     alertas,

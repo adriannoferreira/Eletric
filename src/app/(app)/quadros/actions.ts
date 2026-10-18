@@ -8,9 +8,10 @@ import { z } from "zod";
 import { catalogo, clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
 import { MODELOS_QUADRO } from "@/lib/eletrica/pecas";
 import { quadroExemplo } from "@/lib/eletrica/exemplos";
-import { itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
+import { itensOrcamentoPendencias } from "@/lib/eletrica/manutencao";
+import { type ItemOrcamentoGerado, itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
 import { gerarQuadro } from "@/lib/eletrica/projeto";
-import { InspecaoSchema, LaudoSchema, RegistroArtSchema, lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
+import { InspecaoSchema, LaudoSchema, ManutencaoSchema, RegistroArtSchema, lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
 
 const NovoQuadro = z.object({
   nome: z.string().trim().min(1, "Dê um nome ao quadro").max(120),
@@ -94,7 +95,7 @@ export async function salvarProjetoObra(
     const anterior = lerQuadro(atual.dados);
     await db
       .update(quadros)
-      .set({ nome: nomeOk, clienteId, dados: { ...dados, inspecoes: anterior.inspecoes, laudo: anterior.laudo, art: anterior.art } })
+      .set({ nome: nomeOk, clienteId, dados: { ...dados, inspecoes: anterior.inspecoes, laudo: anterior.laudo, art: anterior.art, manutencao: anterior.manutencao } })
       .where(eq(quadros.id, id));
   } else {
     const [q] = await db.insert(quadros).values({ nome: nomeOk, clienteId, dados }).returning({ id: quadros.id });
@@ -129,7 +130,7 @@ export async function salvarComoModelo(nome: string, descricao: string, dados: u
     descricao: descricao.trim().slice(0, 300),
     clienteId: null,
     modelo: true,
-    dados: { ...r.data, memorial: null, compras: [], inspecoes: [], laudo: null, art: null },
+    dados: { ...r.data, memorial: null, compras: [], inspecoes: [], laudo: null, art: null, manutencao: null },
   });
   revalidatePath("/quadros");
   return { ok: true as const };
@@ -141,7 +142,7 @@ export async function usarModelo(modeloId: number, nome: string, clienteId: numb
     .from(quadros)
     .where(and(eq(quadros.id, modeloId), eq(quadros.modelo, true)));
   if (!m) return "Modelo não encontrado.";
-  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null, art: null };
+  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null, art: null, manutencao: null };
   const [q] = await db
     .insert(quadros)
     .values({ nome: nome.trim() || m.nome, clienteId, dados })
@@ -190,33 +191,11 @@ export async function salvarCompras(id: number, chaves: string[]) {
  * Cria um orçamento (rascunho) a partir do quadro salvo: materiais da lista do
  * quadro + mão de obra, com preços do catálogo. Redireciona para o editor.
  */
-export async function gerarOrcamentoDoQuadro(quadroId: number, clienteEscolhido: number | null) {
-  const [q] = await db.select().from(quadros).where(eq(quadros.id, quadroId));
-  if (!q) return "Quadro não encontrado.";
-  const clienteId = clienteEscolhido ?? q.clienteId;
-  if (!clienteId) return "Escolha o cliente do orçamento.";
-  const [cli] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.id, clienteId));
-  if (!cli) return "Cliente não encontrado.";
-
-  const cat = await db
-    .select({ tipo: catalogo.tipo, nome: catalogo.nome, unidade: catalogo.unidade, preco: catalogo.preco })
-    .from(catalogo)
-    .where(eq(catalogo.ativo, true));
-  const dados = lerQuadro(q.dados);
-  const itens = itensOrcamentoDoQuadro(dados, cat);
-
-  if (!q.clienteId && !q.modelo) await db.update(quadros).set({ clienteId }).where(eq(quadros.id, quadroId));
+/** Cria um orçamento rascunho com os itens dados e redireciona para o editor. */
+async function criarOrcamento(clienteId: number, titulo: string, observacoes: string, itens: ItemOrcamentoGerado[]) {
   const [o] = await db
     .insert(orcamentos)
-    .values({
-      clienteId,
-      titulo: `Instalação do quadro ${q.nome}`,
-      tokenPublico: randomBytes(12).toString("base64url"),
-      observacoes: [
-        "Serviço executado conforme a ABNT NBR 5410 (instalações elétricas de baixa tensão) e a NR-10.",
-        "Materiais e quantidades conforme o projeto do quadro de distribuição; cabos com 10% de folga.",
-      ].join("\n"),
-    })
+    .values({ clienteId, titulo, tokenPublico: randomBytes(12).toString("base64url"), observacoes })
     .returning({ id: orcamentos.id });
   if (itens.length) {
     await db.insert(orcamentoItens).values(
@@ -233,6 +212,66 @@ export async function gerarOrcamentoDoQuadro(quadroId: number, clienteEscolhido:
   }
   revalidatePath("/orcamentos");
   redirect(`/orcamentos/${o.id}`);
+}
+
+async function quadroECliente(quadroId: number, clienteEscolhido: number | null) {
+  const [q] = await db.select().from(quadros).where(eq(quadros.id, quadroId));
+  if (!q) return { erro: "Quadro não encontrado." } as const;
+  const clienteId = clienteEscolhido ?? q.clienteId;
+  if (!clienteId) return { erro: "Escolha o cliente do orçamento." } as const;
+  const [cli] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.id, clienteId));
+  if (!cli) return { erro: "Cliente não encontrado." } as const;
+  if (!q.clienteId && !q.modelo) await db.update(quadros).set({ clienteId }).where(eq(quadros.id, quadroId));
+  const cat = await db
+    .select({ tipo: catalogo.tipo, nome: catalogo.nome, unidade: catalogo.unidade, preco: catalogo.preco })
+    .from(catalogo)
+    .where(eq(catalogo.ativo, true));
+  return { q, clienteId, cat, dados: lerQuadro(q.dados) } as const;
+}
+
+/**
+ * Cria um orçamento (rascunho) a partir do quadro salvo: materiais da lista do
+ * quadro + mão de obra, com preços do catálogo. Redireciona para o editor.
+ */
+export async function gerarOrcamentoDoQuadro(quadroId: number, clienteEscolhido: number | null) {
+  const r = await quadroECliente(quadroId, clienteEscolhido);
+  if ("erro" in r) return r.erro;
+  await criarOrcamento(
+    r.clienteId,
+    `Instalação do quadro ${r.q.nome}`,
+    [
+      "Serviço executado conforme a ABNT NBR 5410 (instalações elétricas de baixa tensão) e a NR-10.",
+      "Materiais e quantidades conforme o projeto do quadro de distribuição; cabos com 10% de folga.",
+    ].join("\n"),
+    itensOrcamentoDoQuadro(r.dados, r.cat),
+  );
+}
+
+/** Orçamento das pendências de uma visita de manutenção preventiva. */
+export async function gerarOrcamentoPendencias(quadroId: number, visitaId: string, clienteEscolhido: number | null) {
+  const r = await quadroECliente(quadroId, clienteEscolhido);
+  if ("erro" in r) return r.erro;
+  const visita = r.dados.manutencao?.visitas.find((v) => v.id === visitaId);
+  if (!visita) return "Visita não encontrada (salve a visita antes).";
+  const itens = itensOrcamentoPendencias(r.dados, visita, r.cat);
+  if (!itens.length) return "Esta visita não tem pendências.";
+  await criarOrcamento(
+    r.clienteId,
+    `Correções da manutenção preventiva nº ${visita.numero} — ${r.q.nome}`,
+    "Correções identificadas na manutenção preventiva, a executar conforme a ABNT NBR 5410 e a NR-10.",
+    itens,
+  );
+}
+
+export async function salvarManutencao(id: number, manutencao: unknown) {
+  const r = ManutencaoSchema.safeParse(manutencao);
+  if (!r.success) return { ok: false as const };
+  await db
+    .update(quadros)
+    .set({ dados: sql`jsonb_set(${quadros.dados}, '{manutencao}', ${JSON.stringify(r.data)}::jsonb, true)` })
+    .where(eq(quadros.id, id));
+  revalidatePath("/");
+  return { ok: true as const };
 }
 
 /** Salva o histórico de inspeções (direto no banco, para sincronizar celular e notebook). */

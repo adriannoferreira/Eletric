@@ -234,6 +234,40 @@ export const RegistroArtSchema = z.object({
 });
 export type RegistroArt = z.infer<typeof RegistroArtSchema>;
 
+// ---------------------------------------------------------------------------
+// Manutenção preventiva
+// ---------------------------------------------------------------------------
+
+export const PERIODICIDADES = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 } as const;
+export type Periodicidade = keyof typeof PERIODICIDADES;
+
+export const RespostaManutencaoSchema = z.object({
+  itemId: z.string(),
+  status: z.enum(["ok", "corrigido", "pendente"]).nullable().catch(null),
+  valor: z.number().nullable().catch(null),
+  obs: z.string().catch(""),
+});
+export type RespostaManutencao = z.infer<typeof RespostaManutencaoSchema>;
+
+export const VisitaSchema = z.object({
+  id: z.string().catch(() => novoId("v")),
+  numero: z.number().int().catch(1),
+  data: z.string().catch(() => new Date().toISOString()),
+  tecnico: z.string().catch(""),
+  respostas: z.array(RespostaManutencaoSchema).catch([]),
+  trocas: z.array(z.object({ peca: z.string().catch(""), quantidade: z.number().catch(1) })).catch([]),
+  recomendacoes: z.string().catch(""),
+});
+export type Visita = z.infer<typeof VisitaSchema>;
+
+export const ManutencaoSchema = z.object({
+  periodicidade: z.enum(["mensal", "trimestral", "semestral", "anual"]).catch("semestral"),
+  /** AAAA-MM-DD */
+  proximaVisita: z.string().catch(""),
+  visitas: z.array(VisitaSchema).catch([]),
+});
+export type Manutencao = z.infer<typeof ManutencaoSchema>;
+
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
   alimentacao: AlimentacaoSchema.catch(AlimentacaoSchema.parse({})),
@@ -250,6 +284,7 @@ export const QuadroDadosSchema = z.object({
   inspecoes: z.array(InspecaoSchema).catch([]),
   laudo: LaudoSchema.nullable().catch(null),
   art: RegistroArtSchema.nullable().catch(null),
+  manutencao: ManutencaoSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -277,6 +312,7 @@ export function novoQuadro(
     inspecoes: [],
     laudo: null,
     art: null,
+    manutencao: null,
   };
 }
 

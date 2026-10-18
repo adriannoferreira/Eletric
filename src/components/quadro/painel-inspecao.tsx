@@ -28,7 +28,7 @@ export function fotoLocal(quadroId: number, inspId: string, itemId: string) {
   }
 }
 
-async function reduzirFoto(arquivo: File): Promise<string> {
+export async function reduzirFoto(arquivo: File): Promise<string> {
   const url = URL.createObjectURL(arquivo);
   try {
     const img = await new Promise<HTMLImageElement>((ok, erro) => {
