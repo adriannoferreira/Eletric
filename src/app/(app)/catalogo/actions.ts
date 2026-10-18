@@ -19,10 +19,23 @@ import {
   atualizarEmLote,
   carregarKitsSugeridos,
   criarSugestaoIA,
+  criarVariantes,
   decidirSugestao,
+  migrarVariantes,
   obterConfig,
   registrarPreco,
+  registrarPrecoLoja,
 } from "@/lib/precos/servidor";
+import {
+  type Atributos,
+  converterPreco,
+  ehFamilia,
+  especificacaoCompleta,
+  inferirVariante,
+  limparAtributos,
+  nomeVariante,
+  textoEspecificacao,
+} from "@/lib/precos/variantes";
 import { CATALOGO_INICIAL } from "./sugestoes";
 
 const revalidar = () => {
@@ -91,8 +104,49 @@ export async function excluirItem(id: number) {
 }
 
 export async function carregarCatalogoInicial() {
-  await db.insert(catalogo).values(CATALOGO_INICIAL);
+  await db.insert(catalogo).values(
+    CATALOGO_INICIAL.map((i) => {
+      const v = i.tipo === "material" ? inferirVariante(i.nome) : null;
+      return v ? { ...i, familia: v.familia, atributos: v.atributos, especificacao: textoEspecificacao(v) } : i;
+    }),
+  );
   revalidar();
+}
+
+/* ------------------------------- Variantes ------------------------------- */
+
+export async function migrarItensGenericos() {
+  const r = await migrarVariantes();
+  revalidar();
+  return r;
+}
+
+/** Cria as variantes escolhidas na grade (ou num preset) de uma família. */
+export async function criarVariantesAcao(familia: string, combinacoes: Atributos[], preco?: number) {
+  if (!ehFamilia(familia)) return { erro: "Família inválida", criadas: 0 };
+  if (!Array.isArray(combinacoes) || combinacoes.length === 0) return { erro: "Escolha ao menos uma combinação", criadas: 0 };
+  if (combinacoes.length > 200) return { erro: "Muitas combinações de uma vez (máx. 200)", criadas: 0 };
+  const r = await criarVariantes(familia, combinacoes, preco && preco > 0 ? preco : 0);
+  revalidar();
+  return { erro: null, criadas: r.criadas };
+}
+
+/** Define/edita os atributos de um material (o nome passa a ser gerado por eles quando completos). */
+export async function salvarAtributos(id: number, familia: string, atributos: Atributos) {
+  if (!ehFamilia(familia)) return "Família inválida";
+  const limpos = limparAtributos(familia, atributos);
+  const e = { familia, atributos: limpos };
+  await db
+    .update(catalogo)
+    .set({
+      familia,
+      atributos: limpos,
+      especificacao: textoEspecificacao(e),
+      ...(especificacaoCompleta(e) ? { nome: nomeVariante(e) } : {}),
+    })
+    .where(eq(catalogo.id, id));
+  revalidar();
+  return null;
 }
 
 export async function historicoItem(id: number) {
@@ -201,7 +255,7 @@ const ItensCotacao = z.array(
     criarNovo: z.boolean(),
     tipo: z.enum(["servico", "material"]),
     descricao: z.string().trim().min(1).max(300),
-    unidade: z.string().trim().max(20),
+    unidade: z.string().trim().max(40),
     preco: z.number().positive(),
   }),
 );
@@ -214,15 +268,32 @@ export async function aplicarCotacao(fornecedorId: number | null, itens: z.input
   let aplicados = 0;
   for (const i of ok.data) {
     let id = i.catalogoId;
+    let preco = i.preco;
     if (!id && i.criarNovo) {
+      const v = i.tipo === "material" ? inferirVariante(i.descricao) : null;
+      const completo = v && especificacaoCompleta(v);
       [{ id }] = await db
         .insert(catalogo)
-        .values({ tipo: i.tipo, nome: i.descricao, unidade: i.unidade || "un", categoria: "Cotações", preco: i.preco })
+        .values({
+          tipo: i.tipo,
+          nome: completo ? nomeVariante(v) : i.descricao,
+          unidade: i.unidade || "un",
+          categoria: "Cotações",
+          preco: i.preco,
+          familia: v?.familia ?? null,
+          atributos: v?.atributos ?? {},
+          especificacao: v ? textoEspecificacao(v) : "",
+        })
         .returning({ id: catalogo.id });
+    } else if (id) {
+      // Converte a unidade da loja (ex.: rolo de 100 m) para a do catálogo (m).
+      const [alvo] = await db.select({ unidade: catalogo.unidade }).from(catalogo).where(eq(catalogo.id, id));
+      if (alvo && i.unidade && alvo.unidade !== i.unidade) preco = converterPreco(i.preco, i.unidade, alvo.unidade) ?? i.preco;
     }
     if (!id) continue;
+    await registrarPrecoLoja(id, { preco, loja: forn?.nome || "Cotação sem loja", fornecedorId: forn?.id ?? null, fonte: "cotacao" });
     await registrarPreco(id, {
-      preco: i.preco,
+      preco,
       fonte: "cotacao",
       fornecedorId: forn?.id ?? null,
       fornecedorNome: forn?.nome ?? "",

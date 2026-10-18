@@ -19,6 +19,7 @@ import {
 import { Etiquetas } from "@/components/quadro/etiquetas";
 import { AutoImprimir, BotaoImprimir, FotosLocais } from "@/components/quadro/impressao-cliente";
 import { TabelaCompras } from "@/components/quadro/lista-compras";
+import { ListaPontosImpressao } from "@/components/quadro/lista-pontos-impressao";
 import { BlocoPadraoEquatorial } from "@/components/quadro/padrao-equatorial";
 import { temGeracao, temRecargaVEAcima74 } from "@/lib/eletrica/memorial-quadro";
 import { BlocoDemanda, demandaDoQuadro, ListaSeguranca, TabelaCargas } from "@/components/quadro/projeto-blocos";
@@ -50,6 +51,7 @@ const DOCS = {
   ligacoes: "Ligações do quadro (montagem)",
   multifilar: "Diagrama multifilar",
   memorial: "Memorial descritivo",
+  pontos: "Lista de pontos por ambiente",
 } as const;
 type Doc = keyof typeof DOCS;
 
@@ -165,6 +167,14 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
               : "A Equatorial não exige memorial para unidade individual em BT (NT.00001 item 5.2)."
           }
         />
+      </>
+    );
+  } else if (doc === "pontos") {
+    conteudo = (
+      <>
+        {cab("Lista de pontos por ambiente", q.nome)}
+        <ListaPontosImpressao dados={dados} analise={analise} />
+        <RodapeDoc extra="Quantidades mínimas pela NBR 5410 item 9.5.2; alturas são prática usual (não exigência da norma); volumes do banheiro conforme NBR 5410 item 9.1 — conferir." />
       </>
     );
   } else if (doc === "compras") {

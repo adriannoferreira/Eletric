@@ -22,7 +22,15 @@ export async function POST(req: Request) {
   if (!texto && !anexo) return Response.json({ erro: "Cole o texto ou envie a foto da cotação." }, { status: 400 });
 
   const itens = await db
-    .select({ id: catalogo.id, nome: catalogo.nome, unidade: catalogo.unidade })
+    .select({
+      id: catalogo.id,
+      nome: catalogo.nome,
+      unidade: catalogo.unidade,
+      tipo: catalogo.tipo,
+      preco: catalogo.preco,
+      familia: catalogo.familia,
+      atributos: catalogo.atributos,
+    })
     .from(catalogo)
     .where(eq(catalogo.ativo, true));
   try {

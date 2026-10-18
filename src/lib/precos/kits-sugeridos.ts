@@ -3,7 +3,15 @@
  * residencial comum (pé-direito ~2,8 m, até ~8 m do quadro). Tudo é editável.
  * Horas = tempo de eletricista e ajudante por unidade.
  */
-type Mat = { nome: string; unidade: string; qtd: number };
+type Mat = {
+  nome: string;
+  unidade: string;
+  qtd: number;
+  /** Material parametrizável: família, atributos fixos e variáveis escolhidas ao usar o kit. */
+  familia?: string;
+  atributos?: Record<string, string | number>;
+  variaveis?: Record<string, string | number>;
+};
 export type KitSugerido = {
   chave: string;
   nome: string;
@@ -121,9 +129,9 @@ export const KITS_SUGERIDOS: KitSugerido[] = [
     descricao: "Até 7.500 W em 220 V, ~15 m do quadro: cabo 6 mm² (F, F/N, PE) e disjuntor 2P.",
     servico: { nome: "Circuito dedicado para chuveiro (com instalação)", unidade: "un", horasEletricista: 2.5, horasAjudante: 1.5 },
     materiais: [
-      { nome: CABO6, unidade: "m", qtd: 48 },
+      { nome: CABO6, unidade: "m", qtd: 48, familia: "cabo_flexivel", atributos: {}, variaveis: { secao: 6 } },
       { nome: ELETRODUTO, unidade: "m", qtd: 15 },
-      { nome: "Disjuntor DIN 2P curva C", unidade: "un", qtd: 1 },
+      { nome: "Disjuntor DIN 2P curva C", unidade: "un", qtd: 1, familia: "disjuntor_din", atributos: { polos: 2, curva: "C" }, variaveis: { corrente: 40 } },
       { nome: ILHOS, unidade: "un", qtd: 3 },
       { nome: "Conector de porcelana para chuveiro", unidade: "un", qtd: 1 },
     ],
@@ -136,11 +144,11 @@ export const KITS_SUGERIDOS: KitSugerido[] = [
     descricao: "Split até 12.000 BTU em 220 V, ~15 m do quadro: cabo 2,5 mm², tomada 20 A e disjuntor 2P.",
     servico: { nome: "Circuito dedicado para ar-condicionado", unidade: "un", horasEletricista: 3, horasAjudante: 2 },
     materiais: [
-      { nome: CABO25, unidade: "m", qtd: 48 },
+      { nome: CABO25, unidade: "m", qtd: 48, familia: "cabo_flexivel", atributos: {}, variaveis: { secao: 2.5 } },
       { nome: ELETRODUTO, unidade: "m", qtd: 15 },
       { nome: CAIXA42, unidade: "un", qtd: 1 },
       { nome: "Tomada 2P+T 20 A com placa", unidade: "un", qtd: 1 },
-      { nome: "Disjuntor DIN 2P curva C", unidade: "un", qtd: 1 },
+      { nome: "Disjuntor DIN 2P curva C", unidade: "un", qtd: 1, familia: "disjuntor_din", atributos: { polos: 2, curva: "C" }, variaveis: { corrente: 16 } },
       { nome: ILHOS, unidade: "un", qtd: 3 },
     ],
   },
@@ -152,7 +160,7 @@ export const KITS_SUGERIDOS: KitSugerido[] = [
     descricao: "DR 2P 40 A 30 mA com terminais.",
     servico: { nome: "Instalação de DR", unidade: "un", horasEletricista: 1, horasAjudante: 0 },
     materiais: [
-      { nome: "DR 2P 40 A 30 mA", unidade: "un", qtd: 1 },
+      { nome: "DR 2P 40 A 30 mA", unidade: "un", qtd: 1, familia: "dr", atributos: { polos: 2, idnMa: 30 }, variaveis: { corrente: 40 } },
       { nome: ILHOS, unidade: "un", qtd: 4 },
       { nome: CABO6, unidade: "m", qtd: 1 },
     ],

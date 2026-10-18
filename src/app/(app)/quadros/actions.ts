@@ -5,10 +5,13 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { catalogo, clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
+import { catalogo, clientes, db, kitItens, kits, orcamentoItens, orcamentos, quadros } from "@/db";
+import { analisarQuadro } from "@/lib/eletrica/calculo";
+import { kitsDaLista, listaDePontos } from "@/lib/eletrica/pontos";
+import { expandirKit } from "@/lib/precos/kits";
 import { quadroExemplo } from "@/lib/eletrica/exemplos";
 import { itensOrcamentoPendencias } from "@/lib/eletrica/manutencao";
-import { type ItemOrcamentoGerado, itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
+import { type ItemOrcamentoGerado, itensOrcamentoDoQuadro, MARCA_SEM_PRECO } from "@/lib/eletrica/orcamento-quadro";
 import { gerarQuadro } from "@/lib/eletrica/projeto";
 import { trocarCaixa } from "@/lib/eletrica/caixas";
 import { larguraPeca } from "@/lib/eletrica/pecas";
@@ -214,7 +217,12 @@ export async function salvarLigacoesFeitas(id: number, chaves: string[]) {
  * quadro + mão de obra, com preços do catálogo. Redireciona para o editor.
  */
 /** Cria um orçamento rascunho com os itens dados e redireciona para o editor. */
-async function criarOrcamento(clienteId: number, titulo: string, observacoes: string, itens: ItemOrcamentoGerado[]) {
+async function criarOrcamento(
+  clienteId: number,
+  titulo: string,
+  observacoes: string,
+  itens: (ItemOrcamentoGerado & { grupo?: string })[],
+) {
   const [o] = await db
     .insert(orcamentos)
     .values({ clienteId, titulo, tokenPublico: randomBytes(12).toString("base64url"), observacoes })
@@ -228,6 +236,7 @@ async function criarOrcamento(clienteId: number, titulo: string, observacoes: st
         quantidade: i.quantidade,
         unidade: i.unidade,
         precoUnitario: i.precoUnitario,
+        grupo: i.grupo ?? "",
         ordem,
       })),
     );
@@ -326,4 +335,81 @@ export async function salvarArt(id: number, art: unknown) {
     .set({ dados: sql`jsonb_set(${quadros.dados}, '{art}', ${JSON.stringify(r.data)}::jsonb, true)` })
     .where(eq(quadros.id, id));
   return { ok: true as const };
+}
+
+/** Salva o checklist da lista de pontos (direto no banco, para sincronizar celular e notebook). */
+export async function salvarPontosFeitos(id: number, feitos: string[]) {
+  const r = z.array(z.string().max(200)).max(2000).safeParse(feitos);
+  if (!r.success) return { ok: false as const };
+  await db
+    .update(quadros)
+    .set({
+      dados: sql`jsonb_set(${quadros.dados}, '{pontos}', coalesce(${quadros.dados}->'pontos', '{"ajustes":{}}'::jsonb) || jsonb_build_object('feitos', ${JSON.stringify(r.data)}::jsonb), true)`,
+    })
+    .where(eq(quadros.id, id));
+  return { ok: true as const };
+}
+
+/**
+ * Orçamento da lista de pontos: um kit do catálogo por tipo de ponto (tomada 10/20 A,
+ * iluminação, interruptor, chuveiro, ar), com os materiais e preços do próprio kit.
+ * Pontos sem kit cadastrado entram como serviço a definir preço.
+ */
+export async function gerarOrcamentoPontos(quadroId: number, clienteEscolhido: number | null) {
+  const r = await quadroECliente(quadroId, clienteEscolhido);
+  if ("erro" in r) return r.erro;
+  const lista = listaDePontos(r.dados, analisarQuadro(r.dados));
+  const { kits: pedidos, avulsos } = kitsDaLista(lista);
+  if (!pedidos.length && !avulsos.length) return "O quadro não tem pontos para orçar.";
+
+  const linhas = await db.select().from(kits);
+  const porChave = new Map(linhas.filter((k) => k.chave).map((k) => [k.chave!, k]));
+  const ids = pedidos.map((p) => porChave.get(p.chave)?.id).filter((x): x is number => x != null);
+  const itensKits = ids.length ? await db.select().from(kitItens) : [];
+  // Catálogo completo (com família/atributos): expandirKit resolve a variante exata de cada material.
+  const cat = await db.select().from(catalogo);
+  const precos = new Map(cat.map((c) => [c.id, c]));
+
+  const ROTULO: Record<string, string> = {
+    "tomada-10a-embutida": "Ponto de tomada 10 A",
+    "tomada-20a-embutida": "Ponto de tomada 20 A",
+    "ponto-iluminacao": "Ponto de iluminação",
+    "interruptor-simples": "Ponto de interruptor simples",
+    "interruptor-paralelo": "Interruptor paralelo (dois pontos)",
+    "chuveiro-circuito": "Ponto de chuveiro",
+    "ar-condicionado": "Ponto de ar-condicionado",
+  };
+  const itens: (ItemOrcamentoGerado & { grupo?: string })[] = [];
+  for (const pedido of pedidos) {
+    const kit = porChave.get(pedido.chave);
+    const doKit = kit ? itensKits.filter((i) => i.kitId === kit.id).sort((a, b) => a.ordem - b.ordem) : [];
+    if (kit && doKit.length) {
+      for (const i of expandirKit({ nome: kit.nome, itens: doKit }, pedido.quantidade, precos)) {
+        const semPreco = i.precoUnitario <= 0;
+        itens.push({ ...i, descricao: semPreco ? i.descricao + MARCA_SEM_PRECO : i.descricao, semPreco });
+      }
+    } else {
+      itens.push({
+        tipo: "servico",
+        descricao: `${ROTULO[pedido.chave] ?? pedido.chave}${MARCA_SEM_PRECO}`,
+        quantidade: pedido.quantidade,
+        unidade: "un",
+        precoUnitario: 0,
+        semPreco: true,
+      });
+    }
+  }
+  for (const a of avulsos) {
+    itens.push({ tipo: "servico", descricao: a.descricao + MARCA_SEM_PRECO, quantidade: a.quantidade, unidade: "un", precoUnitario: 0, semPreco: true });
+  }
+  await criarOrcamento(
+    r.clienteId,
+    `Pontos elétricos — ${r.q.nome}`,
+    [
+      `Lista de pontos por ambiente: ${lista.totais.pontosLuz} ponto(s) de luz, ${lista.totais.interruptores} interruptor(es), ${lista.totais.tug} tomada(s) de uso geral e ${lista.totais.tue} ponto(s) de uso específico.`,
+      "Quantidades mínimas conforme a ABNT NBR 5410 (9.5.2); execução conforme a NBR 5410 e a NR-10.",
+      ...(porChave.size ? [] : ["Dica: carregue os kits sugeridos em Catálogo → Kits para os pontos virem com materiais e preços."]),
+    ].join("\n"),
+    itens,
+  );
 }

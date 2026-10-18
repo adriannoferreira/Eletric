@@ -23,6 +23,7 @@ import {
   duplicarQuadro,
   excluirQuadro,
   gerarOrcamentoDoQuadro,
+  gerarOrcamentoPontos,
   salvarArt,
   salvarComoModelo,
   salvarCompras,
@@ -30,6 +31,7 @@ import {
   salvarLaudo,
   salvarLigacoesFeitas,
   salvarManutencao,
+  salvarPontosFeitos,
   salvarQuadro,
 } from "@/app/(app)/quadros/actions";
 import { Campo } from "@/components/ui";
@@ -51,6 +53,7 @@ import { AssistenteArt, type ClienteResumo, EditorLaudo, type PerfilResumo } fro
 import { PainelCompras } from "./lista-compras";
 import { type Instrumento, PainelInspecao } from "./painel-inspecao";
 import { PainelManutencao } from "./painel-manutencao";
+import { PainelPontos } from "./painel-pontos";
 import { PainelProjeto } from "./painel-projeto";
 import { VisorUnifilar } from "./visor-unifilar";
 import { VisorMultifilar } from "./visor-multifilar";
@@ -85,6 +88,7 @@ const ABAS = [
   { id: "materiais", rotulo: "Materiais" },
   { id: "ia", rotulo: "Revisão IA" },
   { id: "projeto", rotulo: "Projeto" },
+  { id: "pontos", rotulo: "Pontos" },
   { id: "compras", rotulo: "Compras" },
   { id: "inspecao", rotulo: "Inspeção" },
   { id: "laudo", rotulo: "Laudo" },
@@ -577,6 +581,33 @@ export function Construtor({
                 clientes={clientes}
                 aviso={alterado ? "O orçamento usa a versão salva do quadro. Continuar?" : undefined}
                 acao={(cid) => gerarOrcamentoDoQuadro(id, cid)}
+              />
+            }
+          />
+        )}
+        {aba === "pontos" && (
+          <PainelPontos
+            id={id}
+            dados={dados}
+            analise={analise}
+            aoMudar={setDados}
+            aoMarcar={(feitos) => {
+              // Só o checklist é gravado agora; os ajustes continuam dependendo do Salvar.
+              const comFeitos = (q: QuadroDados): QuadroDados => ({ ...q, pontos: { ajustes: q.pontos?.ajustes ?? {}, feitos } });
+              setDados(comFeitos);
+              setSalvo((sv) => {
+                const [n, c, d] = JSON.parse(sv);
+                return JSON.stringify([n, c, comFeitos(d)]);
+              });
+              salvarPontosFeitos(id, feitos);
+            }}
+            botaoOrcamento={
+              <BotaoOrcamento
+                rotulo="Adicionar ao orçamento"
+                clienteId={clienteId}
+                clientes={clientes}
+                aviso={alterado ? "O orçamento usa a versão salva do quadro. Salve antes para incluir os últimos ajustes. Continuar?" : undefined}
+                acao={(cid) => gerarOrcamentoPontos(id, cid)}
               />
             }
           />
