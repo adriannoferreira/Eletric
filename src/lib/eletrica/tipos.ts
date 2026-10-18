@@ -210,11 +210,29 @@ export const LaudoSchema = z.object({
   conclusao: z.enum(["conforme", "ressalvas", "nao_conforme"]).catch("ressalvas"),
   textoConclusao: z.string().catch(""),
   periodicidade: z.string().catch(""),
-  /** Nº da ART/TRT informado pelo profissional (nunca gerado pelo app). */
-  art: z.string().catch(""),
   atualizadoEm: z.string().catch(""),
 });
 export type Laudo = z.infer<typeof LaudoSchema>;
+
+/**
+ * Dados preparados para a ART (CREA) / TRT (CFT). O app NÃO emite o documento:
+ * só organiza os dados; o nº é informado pelo profissional depois de emitir.
+ */
+export const RegistroArtSchema = z.object({
+  tipo: z.enum(["TRT", "ART"]).catch("TRT"),
+  uf: z.string().catch(""),
+  /** Link do sistema do conselho salvo pelo próprio usuário. */
+  linkConselho: z.string().catch(""),
+  atividade: z.enum(["projeto", "execucao", "projeto_execucao", "manutencao", "inspecao"]).catch("projeto_execucao"),
+  enderecoObra: z.string().catch(""),
+  inicio: z.string().catch(""),
+  fim: z.string().catch(""),
+  descricao: z.string().catch(""),
+  /** Preenchidos pelo profissional após emitir no sistema oficial. */
+  numero: z.string().catch(""),
+  dataEmissao: z.string().catch(""),
+});
+export type RegistroArt = z.infer<typeof RegistroArtSchema>;
 
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
@@ -231,6 +249,7 @@ export const QuadroDadosSchema = z.object({
   /** Histórico de inspeções (mais recente por último). */
   inspecoes: z.array(InspecaoSchema).catch([]),
   laudo: LaudoSchema.nullable().catch(null),
+  art: RegistroArtSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -257,6 +276,7 @@ export function novoQuadro(
     compras: [],
     inspecoes: [],
     laudo: null,
+    art: null,
   };
 }
 

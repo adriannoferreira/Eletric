@@ -10,7 +10,7 @@ import { MODELOS_QUADRO } from "@/lib/eletrica/pecas";
 import { quadroExemplo } from "@/lib/eletrica/exemplos";
 import { itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
 import { gerarQuadro } from "@/lib/eletrica/projeto";
-import { InspecaoSchema, LaudoSchema, lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
+import { InspecaoSchema, LaudoSchema, RegistroArtSchema, lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
 
 const NovoQuadro = z.object({
   nome: z.string().trim().min(1, "Dê um nome ao quadro").max(120),
@@ -94,7 +94,7 @@ export async function salvarProjetoObra(
     const anterior = lerQuadro(atual.dados);
     await db
       .update(quadros)
-      .set({ nome: nomeOk, clienteId, dados: { ...dados, inspecoes: anterior.inspecoes, laudo: anterior.laudo } })
+      .set({ nome: nomeOk, clienteId, dados: { ...dados, inspecoes: anterior.inspecoes, laudo: anterior.laudo, art: anterior.art } })
       .where(eq(quadros.id, id));
   } else {
     const [q] = await db.insert(quadros).values({ nome: nomeOk, clienteId, dados }).returning({ id: quadros.id });
@@ -129,7 +129,7 @@ export async function salvarComoModelo(nome: string, descricao: string, dados: u
     descricao: descricao.trim().slice(0, 300),
     clienteId: null,
     modelo: true,
-    dados: { ...r.data, memorial: null, compras: [], inspecoes: [], laudo: null },
+    dados: { ...r.data, memorial: null, compras: [], inspecoes: [], laudo: null, art: null },
   });
   revalidatePath("/quadros");
   return { ok: true as const };
@@ -141,7 +141,7 @@ export async function usarModelo(modeloId: number, nome: string, clienteId: numb
     .from(quadros)
     .where(and(eq(quadros.id, modeloId), eq(quadros.modelo, true)));
   if (!m) return "Modelo não encontrado.";
-  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null };
+  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null, art: null };
   const [q] = await db
     .insert(quadros)
     .values({ nome: nome.trim() || m.nome, clienteId, dados })
@@ -255,4 +255,14 @@ export async function salvarLaudo(id: number, laudo: unknown) {
     .set({ dados: sql`jsonb_set(${quadros.dados}, '{laudo}', ${JSON.stringify(valor)}::jsonb, true)` })
     .where(eq(quadros.id, id));
   return { ok: true as const, laudo: valor };
+}
+
+export async function salvarArt(id: number, art: unknown) {
+  const r = RegistroArtSchema.safeParse(art);
+  if (!r.success) return { ok: false as const };
+  await db
+    .update(quadros)
+    .set({ dados: sql`jsonb_set(${quadros.dados}, '{art}', ${JSON.stringify(r.data)}::jsonb, true)` })
+    .where(eq(quadros.id, id));
+  return { ok: true as const };
 }
