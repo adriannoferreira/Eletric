@@ -15,6 +15,19 @@ const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "
 export type FontePreco = "manual" | "cotacao" | "ia" | "sinapi";
 export type FonteWeb = { loja: string; url: string; preco: number | null };
 
+/** Oferta encontrada pela IA, com os atributos vistos e se confere com a variante pesquisada. */
+export type OfertaPesquisa = {
+  loja: string;
+  url: string;
+  preco: number | null;
+  unidade: string;
+  /** Preço convertido para a unidade do item do catálogo. */
+  precoConvertido: number | null;
+  atributos: Record<string, string | number>;
+  confere: boolean;
+  divergencias: string[];
+};
+
 /** Lojas e distribuidores onde o eletricista cota material. */
 export const fornecedores = pgTable("fornecedores", {
   id: serial("id").primaryKey(),
@@ -52,6 +65,12 @@ export const sugestoesPreco = pgTable("sugestoes_preco", {
   maximo: money("maximo"),
   fontesWeb: jsonb("fontes_web").$type<FonteWeb[]>().notNull().default([]),
   observacao: text("observacao").notNull().default(""),
+  /** Especificação pesquisada (texto dos atributos da variante). */
+  especificacao: text("especificacao").notNull().default(""),
+  /** Todas as ofertas vistas, inclusive as que não conferem com a variante. */
+  ofertas: jsonb("ofertas").$type<OfertaPesquisa[]>().notNull().default([]),
+  /** Motivo da rejeição automática (ex.: item sem especificação suficiente). */
+  motivo: text("motivo").notNull().default(""),
   /** pendente | aprovada | rejeitada */
   status: text("status").notNull().default("pendente"),
   criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
@@ -82,6 +101,10 @@ export const kitItens = pgTable("kit_itens", {
   unidade: text("unidade").notNull().default("un"),
   quantidade: numeric("quantidade", { precision: 10, scale: 3, mode: "number" }).notNull().default(1),
   ordem: integer("ordem").notNull().default(0),
+  /** Material parametrizável: família + atributos fixos; `variaveis` = atributos escolhidos ao usar o kit (com sugestão). */
+  familia: text("familia"),
+  atributos: jsonb("atributos").$type<Record<string, string | number>>().notNull().default({}),
+  variaveis: jsonb("variaveis").$type<Record<string, string | number>>().notNull().default({}),
 });
 
 /** Configuração de precificação (linha única, id = 1). */

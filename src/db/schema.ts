@@ -80,6 +80,10 @@ export const catalogo = pgTable("catalogo", {
   deslocamento: money("deslocamento"),
   /** Serviços: true = usa o preço digitado; false = calcula pelas horas × valor/hora. */
   precoFixo: boolean("preco_fixo").notNull().default(true),
+  /** Materiais: família técnica (disjuntor_din, dr, cabo_flexivel…) — ver src/lib/precos/variantes.ts. */
+  familia: text("familia"),
+  /** Atributos técnicos da variante (polos, curva, corrente, seção, cor…). */
+  atributos: jsonb("atributos").$type<Record<string, string | number>>().notNull().default({}),
   /** Faixa de preço de mercado na região (pesquisa com IA). */
   mercadoMin: money("mercado_min"),
   mercadoMax: money("mercado_max"),

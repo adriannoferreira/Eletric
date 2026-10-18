@@ -43,6 +43,13 @@
       "when": 1792342034084,
       "tag": "0005_medicoes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792347788738,
+      "tag": "0006_variantes",
+      "breakpoints": true
     }
   ]
 }
