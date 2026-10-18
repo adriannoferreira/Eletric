@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, sessaoValida } from "@/lib/auth";
 
-/** Rotas que não exigem login: tela de login e o link público do orçamento. */
-const PUBLICAS = ["/login", "/o/"];
+/** Rotas que não exigem login: tela de login, link público do orçamento e cron (protegido por CRON_SECRET). */
+const PUBLICAS = ["/login", "/o/", "/api/cron/"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -273,13 +273,15 @@ export async function importarSinapiLote(lote: z.input<typeof LoteSinapi>) {
         },
       });
   }
-  if (horas) {
-    for (const [codigo, h] of Object.entries(horas)) {
-      await db
-        .update(sinapiItens)
-        .set({ horasEletricista: h.eletricista, horasAjudante: h.ajudante })
-        .where(and(eq(sinapiItens.tipo, "composicao"), eq(sinapiItens.codigo, codigo)));
-    }
+  const entradas = Object.entries(horas ?? {});
+  for (let i = 0; i < entradas.length; i += 500) {
+    const valores = entradas
+      .slice(i, i + 500)
+      .map(([codigo, h]) => sql`(${codigo}, ${h.eletricista}::numeric, ${h.ajudante}::numeric)`);
+    await db.execute(sql`
+      update sinapi_itens s set horas_eletricista = v.e, horas_ajudante = v.a
+      from (values ${sql.join(valores, sql`, `)}) as v(codigo, e, a)
+      where s.tipo = 'composicao' and s.codigo = v.codigo`);
   }
   if (referencia) await db.update(configPrecos).set({ referenciaSinapi: referencia }).where(eq(configPrecos.id, 1));
   return null;

@@ -38,6 +38,7 @@ const Dados = z.object({
         quantidade: z.number().positive(),
         unidade: z.string().max(20),
         precoUnitario: z.number().min(0),
+        grupo: z.string().max(200).default(""),
       }),
     )
     .max(300),
@@ -102,7 +103,7 @@ export async function duplicarOrcamento(id: number) {
     .returning({ id: orcamentos.id });
   if (itens.length) {
     await db.insert(orcamentoItens).values(
-      itens.map(({ tipo, descricao, quantidade, unidade, precoUnitario, ordem }) => ({
+      itens.map(({ tipo, descricao, quantidade, unidade, precoUnitario, ordem, grupo }) => ({
         orcamentoId: novo.id,
         tipo,
         descricao,
@@ -110,6 +111,7 @@ export async function duplicarOrcamento(id: number) {
         unidade,
         precoUnitario,
         ordem,
+        grupo,
       })),
     );
   }

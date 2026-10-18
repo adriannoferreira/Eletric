@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Boxes,
   Check,
   ChevronLeft,
   Copy,
@@ -17,9 +18,10 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { Badge, Campo } from "@/components/ui";
-import type { Cliente, ItemCatalogo, Orcamento, OrcamentoItem } from "@/db/schema";
+import type { Cliente, ItemCatalogo, Kit, KitItem, Orcamento, OrcamentoItem } from "@/db";
+import { custoKit, expandirKit } from "@/lib/precos/kits";
 import { linkWhatsApp, reais } from "@/lib/formato";
 import { STATUS_ORCAMENTO } from "@/lib/opcoes";
 import { numeroOrcamento, totais } from "@/lib/orcamento";
@@ -48,21 +50,24 @@ export function EditorOrcamento({
   cliente,
   itensIniciais,
   catalogo,
+  kits,
 }: {
   orcamento: Orcamento;
   cliente: Cliente;
   itensIniciais: OrcamentoItem[];
   catalogo: ItemCatalogo[];
+  kits: (Kit & { itens: KitItem[] })[];
 }) {
   const [titulo, setTitulo] = useState(o.titulo);
   const [itens, setItens] = useState<Item[]>(() =>
-    itensIniciais.map(({ tipo, descricao, quantidade, unidade, precoUnitario }) => ({
+    itensIniciais.map(({ tipo, descricao, quantidade, unidade, precoUnitario, grupo }) => ({
       chave: chave(),
       tipo: tipo === "material" ? "material" : "servico",
       descricao,
       quantidade,
       unidade,
       precoUnitario,
+      grupo,
     })),
   );
   const [desconto, setDesconto] = useState(o.desconto);
@@ -75,6 +80,7 @@ export function EditorOrcamento({
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, iniciar] = useTransition();
   const [abrirCatalogo, setAbrirCatalogo] = useState(false);
+  const [abrirKit, setAbrirKit] = useState(false);
   const [menu, setMenu] = useState(false);
 
   const t = useMemo(() => totais(itens, desconto), [itens, desconto]);
@@ -104,7 +110,7 @@ export function EditorOrcamento({
       prazoExecucao,
       garantia,
       observacoes,
-      itens: itens.map(({ tipo, descricao, quantidade, unidade, precoUnitario }) => ({ tipo, descricao, quantidade, unidade, precoUnitario })),
+      itens: itens.map(({ tipo, descricao, quantidade, unidade, precoUnitario, grupo }) => ({ tipo, descricao, quantidade, unidade, precoUnitario, grupo })),
     });
     setErro(r.erro);
     if (!r.erro) setSujo(false);
@@ -196,8 +202,27 @@ export function EditorOrcamento({
           <span className="text-sm text-muted">{itens.length} {itens.length === 1 ? "item" : "itens"}</span>
         </div>
         <ul className="space-y-2">
-          {itens.map((i) => (
-            <li key={i.chave} className="card p-3">
+          {itens.map((i, n) => (
+            <Fragment key={i.chave}>
+            {i.grupo && i.grupo !== itens[n - 1]?.grupo && (
+              <li className="flex items-center justify-between gap-2 px-1 pt-2 text-sm font-semibold">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Boxes className="size-4 shrink-0 text-accent" />
+                  <span className="truncate">{i.grupo}</span>
+                </span>
+                <button
+                  onClick={() => {
+                    if (!confirm(`Remover todos os itens de "${i.grupo}"?`)) return;
+                    setItens((l) => l.filter((x) => x.grupo !== i.grupo));
+                    setSujo(true);
+                  }}
+                  className="btn btn-ghost px-2 py-1 text-xs font-medium text-muted hover:text-danger"
+                >
+                  Remover kit
+                </button>
+              </li>
+            )}
+            <li className={`card p-3 ${i.grupo ? "ml-3 border-l-4 border-l-accent/60" : ""}`}>
               <div className="flex items-start gap-2">
                 <button
                   onClick={() => atualizarItem(i.chave, { tipo: i.tipo === "servico" ? "material" : "servico" })}
@@ -246,17 +271,21 @@ export function EditorOrcamento({
                 <p className="pb-2 text-right font-semibold">{reais(i.quantidade * i.precoUnitario)}</p>
               </div>
             </li>
+            </Fragment>
           ))}
         </ul>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button onClick={() => setAbrirCatalogo(true)} className="btn btn-secondary">
-            <Search className="size-4" /> Do catálogo
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <button onClick={() => setAbrirKit(true)} className="btn btn-primary px-2">
+            <Boxes className="size-4" /> Kit
+          </button>
+          <button onClick={() => setAbrirCatalogo(true)} className="btn btn-secondary px-2">
+            <Search className="size-4" /> Catálogo
           </button>
           <button
-            onClick={() => adicionar({ tipo: "servico", descricao: "", quantidade: 1, unidade: "un", precoUnitario: 0 })}
-            className="btn btn-secondary"
+            onClick={() => adicionar({ tipo: "servico", descricao: "", quantidade: 1, unidade: "un", precoUnitario: 0, grupo: "" })}
+            className="btn btn-secondary px-2"
           >
-            <Plus className="size-4" /> Item avulso
+            <Plus className="size-4" /> Avulso
           </button>
         </div>
       </section>
@@ -344,9 +373,22 @@ export function EditorOrcamento({
               quantidade: 1,
               unidade: c.unidade,
               precoUnitario: c.preco,
+              grupo: "",
             })
           }
           aoFechar={() => setAbrirCatalogo(false)}
+        />
+      )}
+
+      {abrirKit && (
+        <SeletorKit
+          kits={kits}
+          catalogo={catalogo}
+          aoAdicionar={(novos) => {
+            setItens((l) => [...l, ...novos.map((x) => ({ ...x, chave: chave() }))]);
+            setSujo(true);
+          }}
+          aoFechar={() => setAbrirKit(false)}
         />
       )}
     </div>
@@ -416,6 +458,106 @@ function SeletorCatalogo({
             </li>
           ))}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function SeletorKit({
+  kits,
+  catalogo,
+  aoAdicionar,
+  aoFechar,
+}: {
+  kits: (Kit & { itens: KitItem[] })[];
+  catalogo: ItemCatalogo[];
+  aoAdicionar: (itens: Omit<Item, "chave">[]) => void;
+  aoFechar: () => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const [sel, setSel] = useState<number | null>(null);
+  const [qtd, setQtd] = useState("1");
+  const precos = useMemo(() => new Map(catalogo.map((c) => [c.id, c])), [catalogo]);
+  const normal = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  const lista = kits.filter((k) => normal(`${k.nome} ${k.categoria}`).includes(normal(busca)));
+  const kit = kits.find((k) => k.id === sel);
+  const quantidade = lerNumero(qtd);
+  const previa = kit && quantidade > 0 ? expandirKit(kit, quantidade, precos) : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" onClick={aoFechar}>
+      <div className="absolute inset-0 bg-black/50" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex max-h-[88dvh] w-full max-w-lg flex-col rounded-t-3xl border border-border bg-surface md:rounded-3xl"
+      >
+        <div className="flex items-center gap-2 border-b border-border p-4">
+          <Boxes className="size-4 text-accent" />
+          {kit ? (
+            <button onClick={() => setSel(null)} className="flex-1 truncate text-left font-semibold">
+              ‹ {kit.nome}
+            </button>
+          ) : (
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} autoFocus placeholder="Buscar kit" className="flex-1 bg-transparent text-base outline-none" />
+          )}
+          <button onClick={aoFechar} className="btn btn-ghost p-2" aria-label="Fechar">
+            <X className="size-5" />
+          </button>
+        </div>
+        {!kit ? (
+          <ul className="flex-1 divide-y divide-border overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+            {kits.length === 0 && (
+              <li className="p-6 text-center text-sm text-muted">
+                Nenhum kit cadastrado. <Link href="/catalogo/kits" className="text-info underline">Carregue os kits sugeridos</Link>.
+              </li>
+            )}
+            {lista.map((k) => (
+              <li key={k.id}>
+                <button onClick={() => setSel(k.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{k.nome}</span>
+                    <span className="text-xs text-muted">
+                      {k.categoria} · {k.itens.length} itens
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold">
+                    {reais(custoKit(expandirKit(k, 1, precos)))}/{k.unidade}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex-1 space-y-3 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <label className="block text-sm text-muted">
+              Quantidade ({kit.unidade})
+              <input value={qtd} onChange={(e) => setQtd(e.target.value)} inputMode="decimal" autoFocus className="input mt-1" />
+            </label>
+            <ul className="space-y-1 text-sm">
+              {previa.map((i, n) => (
+                <li key={n} className="flex justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {String(i.quantidade).replace(".", ",")} {i.unidade} · {i.descricao}
+                  </span>
+                  <span className={i.precoUnitario <= 0 ? "text-danger" : ""}>{reais(i.quantidade * i.precoUnitario)}</span>
+                </li>
+              ))}
+            </ul>
+            {previa.some((i) => i.precoUnitario <= 0) && (
+              <p className="text-xs text-danger">Itens em vermelho estão sem preço no catálogo — preencha depois no orçamento.</p>
+            )}
+            <button
+              disabled={!previa.length}
+              onClick={() => {
+                aoAdicionar(previa);
+                aoFechar();
+              }}
+              className="btn btn-primary w-full"
+            >
+              Adicionar · {reais(custoKit(previa))}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
