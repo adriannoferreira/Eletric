@@ -603,6 +603,7 @@ export function Construtor({
             }}
             botaoOrcamento={
               <BotaoOrcamento
+                className="btn btn-primary"
                 rotulo="Adicionar ao orçamento"
                 clienteId={clienteId}
                 clientes={clientes}

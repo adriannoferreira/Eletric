@@ -1,6 +1,6 @@
 "use client";
 
-import { Lightbulb, Plug, Printer, ToggleLeft, Zap } from "lucide-react";
+import { ChevronDown, Lightbulb, Plug, Printer, ToggleLeft, TriangleAlert, Zap } from "lucide-react";
 import { useMemo } from "react";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/lib/eletrica/pontos";
 import type { PontosConfig, QuadroDados } from "@/lib/eletrica/tipos";
 import { Materiais } from "./lista-pontos-impressao";
+import { MenuMais, SeloConferir, SeloRef } from "./mini";
 
 const ICONE = { luz: Lightbulb, interruptor: ToggleLeft, tug: Plug, tue: Zap } as const;
 const n = (v: number) => v.toLocaleString("pt-BR");
@@ -61,42 +62,47 @@ export function PainelPontos({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Total r="Pontos de luz" v={lista.totais.pontosLuz} />
-        <Total r="Interruptores" v={lista.totais.interruptores} />
-        <Total r="Tomadas (TUG)" v={lista.totais.tug} />
-        <Total r="Uso específico (TUE)" v={lista.totais.tue} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2">
+        <Total r="Luz" v={lista.totais.pontosLuz} />
+        <Total r="Interr." v={lista.totais.interruptores} />
+        <Total r="TUG" v={lista.totais.tug} />
+        <Total r="TUE" v={lista.totais.tue} />
       </div>
-      <div className="flex flex-wrap gap-2">
-        <a href={`/quadros/${id}/imprimir?doc=pontos`} target="_blank" className="btn btn-secondary">
-          <Printer className="size-4" /> Imprimir / PDF
-        </a>
+      <div className="flex items-center gap-2">
         {botaoOrcamento}
+        <MenuMais>
+          <a href={`/quadros/${id}/imprimir?doc=pontos`} target="_blank" className="btn btn-ghost">
+            <Printer className="size-4" /> Imprimir / PDF
+          </a>
+        </MenuMais>
       </div>
-      <p className="rounded-xl bg-info-soft p-3 text-xs text-info">
-        {lista.origem === "projeto"
-          ? "Quantidades mínimas pela NBR 5410 9.5.2, a partir dos ambientes do projeto da obra. "
-          : "Quadro montado do zero: os pontos saem dos circuitos, agrupados pelo local de cada um. "}
-        {AVISO_ALTURAS} Checklist: {feitosValidos}/{totalChecklist} itens feitos.
+      <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        Feito {feitosValidos}/{totalChecklist}
+        {lista.origem === "projeto" && <SeloRef titulo="Quantidades mínimas de iluminação e tomadas por ambiente">NBR 5410 9.5.2</SeloRef>}
+        <SeloRef titulo={AVISO_ALTURAS}>Alturas: prática usual</SeloRef>
       </p>
 
-      {lista.ambientes.map((a) => (
-        <BlocoAmbiente
-          key={a.chave}
-          a={a}
-          ajuste={dados.pontos?.ajustes[a.chave]}
-          feitos={feitos}
-          aoAjustar={(campo) => ajustar(a.chave, campo)}
-          aoMarcar={marcar}
-        />
-      ))}
+      <div className="space-y-2">
+        {lista.ambientes.map((a) => (
+          <BlocoAmbiente
+            key={a.chave}
+            a={a}
+            ajuste={dados.pontos?.ajustes[a.chave]}
+            feitos={feitos}
+            aoAjustar={(campo) => ajustar(a.chave, campo)}
+            aoMarcar={marcar}
+          />
+        ))}
+      </div>
 
-      <section className="card p-4">
-        <h3 className="mb-2 font-semibold">Material total da obra (pontos)</h3>
-        <Materiais itens={lista.materiais} />
-        <p className="mt-2 text-xs text-muted">Eletroduto estimado: distância do ambiente ao quadro + 3 m por ponto. Cabos: ver a lista de materiais do quadro.</p>
-      </section>
+      <details className="card p-4">
+        <summary className="cursor-pointer font-semibold">Material total</summary>
+        <div className="mt-2">
+          <Materiais itens={lista.materiais} />
+          <p className="mt-2 text-xs text-muted">Eletroduto: distância ao quadro + 3 m/ponto (estimado).</p>
+        </div>
+      </details>
     </div>
   );
 }
@@ -116,79 +122,42 @@ function BlocoAmbiente({
 }) {
   const luz = a.pontos.find((p) => p.tipo === "luz");
   const inter = a.pontos.find((p) => p.tipo === "interruptor");
+  const soma = (t: Ponto["tipo"]) => a.pontos.filter((p) => p.tipo === t).reduce((s, p) => s + p.quantidade, 0);
+  const resumo = [
+    [soma("luz"), "luz"],
+    [soma("interruptor"), "int."],
+    [soma("tug"), "TUG"],
+    [soma("tue"), "TUE"],
+  ]
+    .filter(([q]) => (q as number) > 0)
+    .map(([q, r]) => `${q} ${r}`)
+    .join(" · ");
+  const feitosAqui = a.checklist.filter((c) => feitos.has(c.id)).length;
+  const completo = a.checklist.length > 0 && feitosAqui === a.checklist.length;
   return (
-    <section className="card space-y-3 p-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg font-semibold">{a.nome}</h3>
-        <span className="text-xs text-muted">
-          {a.tipoNome}
-          {a.areaM2 ? ` · ${n(a.areaM2)} m²` : ""}
-          {a.perimetroM ? ` · ${n(a.perimetroM)} m de perímetro` : ""}
+    <details className="card group">
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-3">
+        <div className="min-w-0 flex-1">
+          <p className={`font-semibold ${completo ? "text-muted line-through" : ""}`}>
+            {a.nome} {a.avisos.length > 0 && <TriangleAlert className="inline size-3.5 text-warn" />}
+          </p>
+          <p className="text-xs text-muted">{resumo || "sem pontos"}</p>
+        </div>
+        <span className={`text-xs ${completo ? "text-ok" : "text-muted"}`}>
+          {feitosAqui}/{a.checklist.length}
         </span>
-      </header>
+        <ChevronDown className="size-4 text-muted transition group-open:rotate-180" />
+      </summary>
 
-      <ul className="divide-y divide-border">
-        {a.pontos.map((p) => (
-          <LinhaPonto key={p.chave} p={p} />
-        ))}
-      </ul>
+      <div className="space-y-3 border-t border-border p-3">
+        <ul className="divide-y divide-border">
+          {a.pontos.map((p) => (
+            <LinhaPonto key={p.chave} p={p} />
+          ))}
+        </ul>
 
-      {a.avisos.map((t, i) => (
-        <p key={i} className="rounded-lg bg-warn-soft p-2 text-xs text-warn">
-          {t}
-        </p>
-      ))}
+        <SeloConferir itens={a.avisos} />
 
-      {(luz || inter) && (
-        <div className="grid grid-cols-1 gap-2 rounded-xl bg-surface-2 p-3 text-sm sm:grid-cols-3">
-          <label className="space-y-1">
-            <span className="text-xs text-muted">Interruptor</span>
-            <select
-              value={ajuste?.interruptor ?? a.interruptor}
-              onChange={(e) => aoAjustar({ interruptor: e.target.value as TipoInterruptor, interruptores: null })}
-              className="input py-1.5"
-            >
-              {Object.entries(ROTULO_INTERRUPTOR).map(([v, r]) => (
-                <option key={v} value={v}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-muted">Nº de interruptores</span>
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={inter?.quantidade ?? 0}
-              onChange={(e) => aoAjustar({ interruptores: Math.max(0, Number(e.target.value) || 0) })}
-              className="input py-1.5"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-muted">Pontos de luz</span>
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={luz?.quantidade ?? 0}
-              onChange={(e) => aoAjustar({ pontosLuz: Math.max(0, Number(e.target.value) || 0) })}
-              className="input py-1.5"
-            />
-          </label>
-        </div>
-      )}
-
-      <details>
-        <summary className="cursor-pointer text-sm font-semibold">Material do ambiente</summary>
-        <div className="mt-2">
-          <Materiais itens={a.materiais} />
-        </div>
-      </details>
-
-      <div>
-        <p className="mb-1 text-sm font-semibold">Checklist de execução</p>
         <ul className="space-y-1">
           {a.checklist.map((c) => (
             <li key={c.id}>
@@ -199,37 +168,96 @@ function BlocoAmbiente({
             </li>
           ))}
         </ul>
+
+        {(luz || inter) && (
+          <details>
+            <summary className="cursor-pointer text-sm text-muted">Ajustar luz e interruptores</summary>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+              <label className="space-y-1">
+                <span className="text-xs text-muted">Interruptor</span>
+                <select
+                  value={ajuste?.interruptor ?? a.interruptor}
+                  onChange={(e) => aoAjustar({ interruptor: e.target.value as TipoInterruptor, interruptores: null })}
+                  className="input py-1.5"
+                >
+                  {Object.entries(ROTULO_INTERRUPTOR).map(([v, r]) => (
+                    <option key={v} value={v}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted">Interruptores</span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={inter?.quantidade ?? 0}
+                  onChange={(e) => aoAjustar({ interruptores: Math.max(0, Number(e.target.value) || 0) })}
+                  className="input py-1.5"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted">Pontos de luz</span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={luz?.quantidade ?? 0}
+                  onChange={(e) => aoAjustar({ pontosLuz: Math.max(0, Number(e.target.value) || 0) })}
+                  className="input py-1.5"
+                />
+              </label>
+            </div>
+          </details>
+        )}
+
+        <details>
+          <summary className="cursor-pointer text-sm text-muted">Material do ambiente</summary>
+          <div className="mt-2">
+            <Materiais itens={a.materiais} />
+          </div>
+        </details>
       </div>
-    </section>
+    </details>
   );
 }
 
 function LinhaPonto({ p }: { p: Ponto }) {
   const Icone = ICONE[p.tipo];
   return (
-    <li className="flex gap-3 py-2">
-      <Icone className="mt-0.5 size-4 shrink-0 text-accent" />
-      <div className="min-w-0 flex-1 text-sm">
-        <p className="font-medium">
-          {p.quantidade}× {p.descricao}
-          {p.potencia ? <span className="font-normal text-muted"> · {n(p.potencia)} {p.tipo === "tue" ? "W" : "VA"}{p.tipo !== "tue" && p.quantidade > 1 ? " cada" : ""}</span> : null}
-          {p.tensaoV ? <span className="font-normal text-muted"> · {p.tensaoV} V</span> : null}
-        </p>
-        <p className="text-xs text-muted">
-          Altura: {p.altura}
-          {p.circuito ? ` · Circuito ${p.circuito.numero} (${p.circuito.disjuntor}${p.circuito.dr ? ", com DR" : ""})` : " · sem circuito vinculado"}
-        </p>
-        {p.nota && <p className="text-xs text-muted">{p.nota}</p>}
-      </div>
+    <li>
+      <details>
+        <summary className="flex cursor-pointer list-none items-center gap-2 py-2 text-sm">
+          <Icone className="size-4 shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 font-medium">
+            {p.quantidade}× {p.descricao}
+          </span>
+          <span className="shrink-0 text-xs text-muted">{p.circuito ? `C${p.circuito.numero}` : "—"}</span>
+        </summary>
+        <div className="space-y-0.5 pb-2 pl-6 text-xs text-muted">
+          {p.potencia ? (
+            <p>
+              {n(p.potencia)} {p.tipo === "tue" ? "W" : "VA"}
+              {p.tipo !== "tue" && p.quantidade > 1 ? " cada" : ""}
+              {p.tensaoV ? ` · ${p.tensaoV} V` : ""}
+            </p>
+          ) : null}
+          <p>Altura: {p.altura}</p>
+          <p>{p.circuito ? `Circuito ${p.circuito.numero} · ${p.circuito.disjuntor}${p.circuito.dr ? " · DR" : ""}` : "Sem circuito vinculado"}</p>
+          {p.nota && <p>{p.nota}</p>}
+        </div>
+      </details>
     </li>
   );
 }
 
 function Total({ r, v }: { r: string; v: number }) {
   return (
-    <div className="rounded-xl bg-surface-2 p-3">
+    <div className="rounded-xl bg-surface-2 p-2 text-center">
+      <p className="text-lg font-bold">{n(v)}</p>
       <p className="text-xs text-muted">{r}</p>
-      <p className="text-xl font-bold">{n(v)}</p>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { dadosMemorialDoQuadro } from "@/lib/eletrica/memorial-quadro";
 import { EXIGENCIAS_DOCUMENTOS, montarMemorialDescritivo, preencherMemorial } from "@/lib/normas/equatorial-pa";
 import type { ClienteResumo, PerfilResumo } from "./laudo-art";
 import { ListaMateriais } from "./materiais";
+import { MenuMais, SeloRef } from "./mini";
 import { BlocoPadraoEquatorial } from "./padrao-equatorial";
 import { BlocoDemanda, demandaDoQuadro, descreverObra, ListaSeguranca, TabelaCargas } from "./projeto-blocos";
 import { descreverQuadro } from "./revisao-ia";
@@ -236,56 +237,55 @@ export function PainelProjeto({
       <Secao titulo="Memorial descritivo">
         <div className="space-y-3">
           {dadosMem && (
-            <div className="space-y-2 rounded-xl bg-info-soft p-3 text-sm text-info">
-              <p>
-                A Equatorial não exige memorial para unidade individual em baixa tensão (NT.00001, item 5.2); ele é obrigatório para
-                micro/minigeração (NT.00020, item 5.13). Sem geração, o memorial serve ao cliente, à ART/TRT e ao seu arquivo técnico.
-              </p>
-              <p className="text-xs">
-                Os números (cargas, padrão de entrada, circuitos, proteções) saem do cálculo do app; a IA redige só a descrição geral,
-                os critérios e as considerações finais.
-              </p>
-            </div>
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+              {exigeFormato ? "Obrigatório para a Equatorial neste quadro." : "A Equatorial não exige memorial para unidade individual em BT."}
+              <SeloRef titulo="Memorial não exigido para unidade individual em baixa tensão">NT.00001 5.2</SeloRef>
+              <SeloRef titulo="Obrigatório para micro/minigeração distribuída">NT.00020 5.13</SeloRef>
+            </p>
           )}
           {exigeFormato && (
-            <div className="space-y-2 rounded-xl bg-warn-soft p-3 text-sm text-warn">
-              <p className="font-semibold">
-                Este quadro tem {dadosMem!.temGeracao ? "geração própria (solar)" : "carregador de veículo elétrico acima de 7,4 kW"}: o projeto
-                deve ser apresentado à Equatorial no formato exigido.
-              </p>
-              <ul className="list-disc space-y-1 pl-5 text-xs">
+            <details className="rounded-xl bg-warn-soft p-3 text-sm text-warn">
+              <summary className="cursor-pointer font-semibold">
+                Formato {dadosMem!.temGeracao ? "NT.00020 (geração própria)" : "NT.00042 (recarga VE > 7,4 kW)"}
+              </summary>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
                 {EXIGENCIAS_DOCUMENTOS.filter((e) => (dadosMem!.temGeracao ? e.ref.includes("NT.00020") : e.ref.includes("NT.00042"))).map((e, i) => (
                   <li key={i}>
-                    {e.texto} <span className="opacity-80">({e.ref})</span>
+                    {e.texto} <SeloRef>{e.ref}</SeloRef>
                   </li>
                 ))}
+                <li>A4, assinado, digitalizado (até 5 MB), arquivo “Memorial Técnico Descritivo”.</li>
               </ul>
-              <p className="text-xs">Imprima em A4, assine, digitalize (até 5 MB) e nomeie o arquivo “Memorial Técnico Descritivo”.</p>
-            </div>
+            </details>
           )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={dadosMem ? gerarEquatorial : gerar}
-              disabled={gerando || analise.circuitos.length === 0}
-              className="btn btn-primary"
-            >
-              {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {memorial ? "Gerar de novo" : "Gerar memorial descritivo"}
-            </button>
-            {memorial && !gerando && rascunho == null && (
-              <button onClick={() => setRascunho(memorial)} className="btn btn-secondary">
-                <Pencil className="size-4" /> Editar texto
-              </button>
-            )}
-            {dados.memorial && (
-              <a href={`/quadros/${id}/imprimir?doc=memorial`} target="_blank" className="btn btn-secondary">
+          <div className="flex items-center gap-2">
+            {memorial && !gerando ? (
+              <a href={`/quadros/${id}/imprimir?doc=memorial`} target="_blank" className="btn btn-primary">
                 <Printer className="size-4" /> Imprimir / PDF
               </a>
+            ) : (
+              <button
+                onClick={dadosMem ? gerarEquatorial : gerar}
+                disabled={gerando || analise.circuitos.length === 0}
+                className="btn btn-primary"
+              >
+                {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Gerar memorial
+              </button>
+            )}
+            {memorial && !gerando && rascunho == null && (
+              <MenuMais>
+                <button onClick={() => setRascunho(memorial)} className="btn btn-ghost">
+                  <Pencil className="size-4" /> Editar texto
+                </button>
+                <button onClick={dadosMem ? gerarEquatorial : gerar} disabled={analise.circuitos.length === 0} className="btn btn-ghost">
+                  <Sparkles className="size-4" /> Gerar de novo
+                </button>
+              </MenuMais>
             )}
           </div>
           {dados.memorial && !texto && rascunho == null && (
             <p className="text-xs text-muted">
-              Gerado em {new Date(dados.memorial.geradoEm).toLocaleString("pt-BR")} — sai também no PDF.
+              Gerado em {new Date(dados.memorial.geradoEm).toLocaleString("pt-BR")}.
             </p>
           )}
           {rascunho != null ? (
@@ -309,7 +309,14 @@ export function PainelProjeto({
           ) : (
             (memorial || gerando) && (
               <div className="card p-4">
-                {memorial ? (
+                {memorial && !gerando ? (
+                  <details>
+                    <summary className="cursor-pointer text-sm font-semibold">Ver texto</summary>
+                    <div className="mt-2">
+                      <TextoIA>{memorial}</TextoIA>
+                    </div>
+                  </details>
+                ) : memorial ? (
                   <TextoIA>{memorial}</TextoIA>
                 ) : (
                   <div className="space-y-2" aria-label="Escrevendo o memorial">
