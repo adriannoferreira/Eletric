@@ -49,9 +49,7 @@ function Lojas({ lojas }: { lojas: Fornecedor[] }) {
         </button>
       </div>
       {lojas.length === 0 ? (
-        <p className="card p-4 text-sm text-muted">
-          Cadastre as lojas de material elétrico onde você compra em Belém, Ananindeua e Salinópolis para pedir e registrar cotações.
-        </p>
+        <p className="card p-4 text-sm text-muted">Nenhuma loja cadastrada.</p>
       ) : (
         <ul className="card divide-y divide-border">
           {lojas.map((l) => (
@@ -239,7 +237,7 @@ function RegistrarCotacao({ iaLigada, lojas, catalogo }: { iaLigada: boolean; lo
             ))}
           </select>
         </Campo>
-        <Campo rotulo="Cole a resposta da loja" dica="Texto do WhatsApp ou e-mail com itens e preços">
+        <Campo rotulo="Cole a resposta da loja" ajuda="Texto do WhatsApp ou e-mail com itens e preços. A IA lê e casa cada linha com a variante exata do catálogo.">
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
@@ -410,10 +408,7 @@ function PedirCotacao({
             >
               <MessageCircle className="size-4" /> Enviar pelo WhatsApp
             </a>
-            <p className="text-xs text-muted">
-              Quando a loja responder, cole a resposta acima em “Registrar cotação recebida”.{" "}
-              {itens.length > 0 && `Total de ${itens.length} itens.`}
-            </p>
+            {itens.length > 0 && <p className="text-xs text-muted">{itens.length} itens</p>}
           </>
         )}
       </div>

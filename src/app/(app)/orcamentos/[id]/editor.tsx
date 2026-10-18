@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { MaisOpcoes } from "@/components/divulgacao";
 import { Badge, Campo } from "@/components/ui";
 import type { Cliente, ItemCatalogo, Kit, KitItem, Orcamento, OrcamentoItem } from "@/db";
 import { criarVariantesAcao } from "@/app/(app)/catalogo/actions";
@@ -336,7 +337,7 @@ export function EditorOrcamento({
       </section>
 
       {/* Condições */}
-      <section className="card mb-4 grid gap-4 p-4 md:grid-cols-2">
+      <section className="card mb-4 grid gap-3 p-4 md:grid-cols-2">
         <Campo rotulo="Forma de pagamento">
           <input
             value={condicoesPagamento}
@@ -345,6 +346,9 @@ export function EditorOrcamento({
             className="input"
           />
         </Campo>
+        <div className="md:col-span-2">
+          <MaisOpcoes rotulo="Prazo, garantia, validade e observações">
+            <div className="grid gap-4 md:grid-cols-2">
         <Campo rotulo="Prazo de execução">
           <input value={prazoExecucao} onChange={(e) => mexeu(setPrazo)(e.target.value)} placeholder="Ex.: 2 dias úteis" className="input" />
         </Campo>
@@ -369,6 +373,9 @@ export function EditorOrcamento({
             className="input"
           />
         </Campo>
+            </div>
+          </MaisOpcoes>
+        </div>
       </section>
 
       {/* Barra de ações fixa */}

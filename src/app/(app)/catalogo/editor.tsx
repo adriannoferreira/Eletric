@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Check, ChevronDown, ExternalLink, History, Layers, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ExternalLink, History, Layers, Link2, MoreHorizontal, Plus, Search, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { SeloPreco } from "@/components/precos/selo-preco";
 import { AvisoVariante, CriarVariantes, EditorAtributos } from "@/components/precos/variantes";
@@ -82,10 +82,10 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
   return (
     <>
       {!ctx.valorHora && itens.some((i) => i.tipo === "servico" && !i.precoFixo) && (
-        <p className="mb-3 rounded-xl bg-warn-soft p-3 text-sm text-warn">
-          Alguns serviços são calculados pelo tempo, mas seu valor/hora ainda não foi definido. Calcule em{" "}
-          <a href="/vendas/precos" className="font-semibold underline">Vendas → Preços</a> e salve no perfil.
-        </p>
+        <a href="/vendas/precos" className="mb-3 flex items-center gap-2 rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">
+          <span className="min-w-0 flex-1 truncate">Defina seu valor/hora para calcular os serviços</span>
+          <span aria-hidden>›</span>
+        </a>
       )}
       <div className="mb-3 flex gap-2">
         <div className="relative flex-1">
@@ -137,20 +137,26 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
         <p className="card p-6 text-center text-sm text-muted">Nenhum item neste filtro. 👍</p>
       )}
 
-      <div className="space-y-4">
-        {[...porCategoria].map(([cat, lista]) => (
-          <section key={cat}>
-            <h2 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted">{cat}</h2>
-            <ul className="card divide-y divide-border">
+      <div className="space-y-2">
+        {[...porCategoria].map(([cat, lista]) => {
+          const sem = lista.filter((i) => i.preco <= 0).length;
+          return (
+          <details key={cat} open={Boolean(busca.trim()) || filtro !== "todos" || porCategoria.size <= 3} className="group">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-1 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">{cat}</span>
+              <span className="normal-case tracking-normal">
+                {lista.length}
+                {sem > 0 && <span className="text-danger"> · {sem} sem preço</span>}
+              </span>
+              <ChevronDown className="size-3.5 transition group-open:rotate-180" />
+            </summary>
+            <ul className="card mb-2 divide-y divide-border">
               {lista.map((i) => (
                 <li key={i.id}>
-                  <button onClick={() => setEditando(i)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+                  <button onClick={() => setEditando(i)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-2">
                     <div className="min-w-0 flex-1">
-                      <p className={`font-medium ${i.ativo ? "" : "text-muted line-through"}`}>{i.nome}</p>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                        <span>
-                          {i.tipo === "servico" ? "Serviço" : "Material"} · por {i.unidade}
-                        </span>
+                      <p className={`truncate font-medium ${i.ativo ? "" : "text-muted line-through"}`}>{i.nome}</p>
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
                         {semVariante(i) ? (
                           <AvisoVariante e={varianteItem(i)!} />
                         ) : (
@@ -165,19 +171,15 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
                     </div>
                     <span className="shrink-0 text-right">
                       <span className="block font-semibold">{reais(i.preco)}</span>
-                      {i.tipo === "servico" && i.mercadoMin != null && i.mercadoMax != null && (
-                        <span className="block text-[11px] text-muted">
-                          mercado {reais(i.mercadoMin)}–{reais(i.mercadoMax)}
-                        </span>
-                      )}
+                      <span className="block text-[11px] text-muted">/{i.unidade}</span>
                     </span>
-                    <Pencil className="size-4 shrink-0 text-muted" />
                   </button>
                 </li>
               ))}
             </ul>
-          </section>
-        ))}
+          </details>
+          );
+        })}
       </div>
 
       {criarVariantes && <CriarVariantes aoFechar={() => setCriarVariantes(false)} />}

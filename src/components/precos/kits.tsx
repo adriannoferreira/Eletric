@@ -1,5 +1,6 @@
 "use client";
 
+import { Ajuda, MenuAcoes } from "@/components/divulgacao";
 import { Boxes, ChevronDown, Package, Plus, Search, Trash2, Wrench, X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { carregarKits, excluirKit, salvarKit } from "@/app/(app)/catalogo/actions";
@@ -36,11 +37,25 @@ export function EditorKits({ kits, catalogo }: { kits: KitComItens[]; catalogo: 
 
   return (
     <>
-      <p className="mb-3 text-sm text-muted">
-        Serviço + materiais. No orçamento, “5 pontos de tomada” já traz tudo com preço.
-      </p>
-      <div className="mb-4 flex flex-wrap justify-end gap-2">
-        {botaoSugeridos}
+      <div className="mb-3 flex items-center justify-end gap-2">
+        <Ajuda titulo="Kits" alinhar="direita">
+          Serviço + materiais. No orçamento, “5 pontos de tomada” já traz tudo com preço.
+        </Ajuda>
+        {kits.length > 0 && (
+          <MenuAcoes
+            acoes={[
+              {
+                rotulo: pendente ? "Carregando…" : "Carregar kits sugeridos",
+                icone: <Boxes className="size-4" />,
+                onClick: () =>
+                  iniciar(async () => {
+                    const n = await carregarKits();
+                    setMsg(n ? `${n} kit(s) carregados. Itens que faltavam foram criados no catálogo — confira os preços.` : "Os kits sugeridos já estão carregados.");
+                  }),
+              },
+            ]}
+          />
+        )}
         <button onClick={() => setEditando("novo")} className="btn btn-primary">
           <Plus className="size-4" /> Novo kit
         </button>
@@ -48,22 +63,19 @@ export function EditorKits({ kits, catalogo }: { kits: KitComItens[]; catalogo: 
       {msg && <p className="mb-3 rounded-xl bg-ok-soft p-3 text-sm text-ok">{msg}</p>}
 
       {kits.length === 0 ? (
-        <Vazio icone={Boxes} titulo="Nenhum kit ainda" texto="Comece pelos kits sugeridos (tomada, iluminação, chuveiro, ar-condicionado, DR, DPS…) e ajuste às suas obras." />
+        <Vazio icone={Boxes} titulo="Nenhum kit ainda" acao={botaoSugeridos} />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {kits.map((k) => {
             const itens = expandirKit(k, 1, precos);
             const semPreco = itens.filter((i) => i.precoUnitario <= 0).length;
             return (
               <li key={k.id} className="card">
-                <button onClick={() => setAberto(aberto === k.id ? null : k.id)} className="flex w-full items-center gap-3 p-4 text-left">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft">
-                    <Boxes className="size-5" />
-                  </span>
+                <button onClick={() => setAberto(aberto === k.id ? null : k.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold">{k.nome}</span>
-                    <span className="text-xs text-muted">
-                      {k.categoria} · {k.itens.length} itens · por {k.unidade}
+                    <span className="block truncate font-semibold">{k.nome}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {k.itens.length} itens
                       {semPreco > 0 && <span className="text-danger"> · {semPreco} sem preço</span>}
                     </span>
                   </span>

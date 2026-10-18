@@ -15,7 +15,7 @@ export default async function CatalogoLayout({ children }: LayoutProps<"/catalog
     <>
       <Cabecalho
         titulo="Catálogo e preços"
-        subtitulo="Serviços, materiais e kits com preços atualizados para Belém e região"
+        ajuda="Serviços, materiais e kits com preços atualizados para Belém e região. Toque num item para editar, pesquisar o preço com IA ou ver o histórico."
         voltar="/"
       />
       <AbasCatalogo pendentes={n} />
