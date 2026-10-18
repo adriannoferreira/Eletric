@@ -64,16 +64,22 @@ export function Campo({
   rotulo,
   children,
   dica,
+  ajuda,
   className = "",
 }: {
   rotulo: string;
   children: React.ReactNode;
   dica?: string;
+  /** Explicação do campo, aberta pelo (?) ao lado do rótulo — prefira a `dica` visível. */
+  ajuda?: React.ReactNode;
   className?: string;
 }) {
   return (
     <label className={`block space-y-1.5 ${className}`}>
-      <span className="label">{rotulo}</span>
+      <span className="label flex items-center gap-0.5">
+        {rotulo}
+        {ajuda && <Ajuda titulo={rotulo}>{ajuda}</Ajuda>}
+      </span>
       {children}
       {dica && <span className="block text-xs text-muted">{dica}</span>}
     </label>

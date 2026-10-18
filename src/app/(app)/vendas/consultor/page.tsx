@@ -9,7 +9,7 @@ export default function ConsultorPage() {
       assistente="vendas"
       basePath="/vendas/consultor"
       titulo="Consultor de Vendas"
-      subtitulo="Preço, WhatsApp, Google, Instagram e parcerias"
+      subtitulo="Preço, WhatsApp e redes"
       sugestoes={SUGESTOES_VENDAS}
     />
   );

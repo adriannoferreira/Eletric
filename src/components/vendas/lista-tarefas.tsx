@@ -3,6 +3,7 @@
 import { Check, Plus, Trash2 } from "lucide-react";
 import { useActionState, useOptimistic, useTransition } from "react";
 import { adicionarTarefa, alternarTarefa, excluirTarefa } from "@/app/(app)/vendas/actions";
+import { Ajuda } from "@/components/divulgacao";
 
 export type Tarefa = {
   id: number;
@@ -38,8 +39,12 @@ export function ListaTarefas({ tarefas }: { tarefas: Tarefa[] }) {
           </button>
           <div className="min-w-0 flex-1">
             <p className={`font-medium ${t.concluida ? "text-muted line-through" : ""}`}>{t.titulo}</p>
-            {t.descricao && <p className="text-sm text-muted">{t.descricao}</p>}
           </div>
+          {t.descricao && (
+            <Ajuda titulo={t.titulo} alinhar="direita">
+              <p>{t.descricao}</p>
+            </Ajuda>
+          )}
           {t.propria && (
             <button
               onClick={() => {
@@ -64,10 +69,13 @@ export function NovaTarefa() {
     return r;
   }, null);
   return (
-    <form id="form-nova-tarefa" action={acao} className="card space-y-3 p-4">
-      <p className="font-semibold">Adicionar tarefa própria</p>
+    <details className="group card">
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        <Plus className="size-4" /> Tarefa própria
+      </summary>
+    <form id="form-nova-tarefa" action={acao} className="space-y-3 px-4 pb-4">
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input name="titulo" required placeholder="Ex.: Visitar a imobiliária do centro" className="input flex-1" />
+        <input name="titulo" required placeholder="Ex.: Visitar a imobiliária" className="input flex-1" />
         <select name="fase" defaultValue="30" className="input sm:w-40">
           <option value="30">30 dias</option>
           <option value="60">60 dias</option>
@@ -80,5 +88,6 @@ export function NovaTarefa() {
         <Plus className="size-4" /> Adicionar
       </button>
     </form>
+    </details>
   );
 }

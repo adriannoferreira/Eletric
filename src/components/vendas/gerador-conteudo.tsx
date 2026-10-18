@@ -3,6 +3,7 @@
 import { Check, Copy, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { lerStream, TextoIA } from "@/components/texto-ia";
+import { MaisOpcoes } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 
 const TIPOS = {
@@ -105,7 +106,7 @@ export function GeradorConteudo() {
         }}
       >
         <div>
-          <span className="label">O que você quer criar?</span>
+          <span className="label">Criar</span>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(Object.keys(TIPOS) as Tipo[]).map((t) => (
               <button
@@ -133,7 +134,8 @@ export function GeradorConteudo() {
             className="input"
           />
         </Campo>
-        <Campo rotulo="Público (opcional)">
+        <MaisOpcoes>
+        <Campo rotulo="Público">
           <input
             value={publico}
             onChange={(e) => setPublico(e.target.value)}
@@ -148,13 +150,14 @@ export function GeradorConteudo() {
             ))}
           </select>
         </Campo>
+        </MaisOpcoes>
         <button className="btn btn-primary w-full" disabled={gerando}>
           {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
           {gerando ? "Criando…" : "Gerar conteúdo"}
         </button>
       </form>
 
-      <section className="card min-h-64 p-4">
+      <section className={`card p-4 ${resultado || gerando ? "min-h-64" : "hidden lg:block lg:min-h-64"}`}>
         {resultado ? (
           <>
             <div className="mb-3 flex flex-wrap justify-end gap-2">
@@ -173,9 +176,8 @@ export function GeradorConteudo() {
             <Loader2 className="size-4 animate-spin" /> Criando seu conteúdo…
           </p>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-center text-muted">
+          <div className="flex h-full flex-col items-center justify-center py-10 text-muted">
             <Sparkles className="size-8" />
-            <p className="text-sm">Escolha o tipo, diga o tema e toque em “Gerar conteúdo”.</p>
           </div>
         )}
       </section>

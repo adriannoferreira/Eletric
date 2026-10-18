@@ -9,7 +9,7 @@ export default async function PrecosPage() {
   const [eu] = await db.select({ valorHora: perfil.valorHora }).from(perfil).where(eq(perfil.id, 1));
   return (
     <>
-      <Cabecalho titulo="Precificação" subtitulo="Cobre o que seu trabalho vale, sem chute" />
+      <Cabecalho titulo="Precificação" />
       <CalculadoraPrecos valorHoraSalvo={eu?.valorHora ?? null} />
     </>
   );

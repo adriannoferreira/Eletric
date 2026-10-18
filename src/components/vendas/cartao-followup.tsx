@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, Loader2, MessageCircle, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, MessageCircle, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { lerStream } from "@/components/texto-ia";
+import { MenuAcoes } from "@/components/divulgacao";
 import { Badge } from "@/components/ui";
 import { marcarResposta, registrarFollowup } from "@/app/(app)/vendas/actions";
 import { linkWhatsApp, reais } from "@/lib/formato";
@@ -26,7 +27,7 @@ export type ItemFollowup = {
 export function CartaoFollowup({ item }: { item: ItemFollowup }) {
   const [texto, setTexto] = useState(item.mensagem);
   const [gerando, setGerando] = useState(false);
-  const [pendente, iniciar] = useTransition();
+  const [, iniciar] = useTransition();
   const urgente = item.diasSemResposta >= 7;
 
   async function gerarComIA() {
@@ -67,64 +68,54 @@ Regras: tom humano e educado, curta (até 6 linhas), sem pressão exagerada, no 
         <div className="shrink-0 text-right">
           <p className="font-bold">{reais(item.total)}</p>
           <Badge tom={urgente ? "perigo" : "aviso"}>
-            {item.diasSemResposta} {item.diasSemResposta === 1 ? "dia" : "dias"} sem resposta
+            {item.diasSemResposta} {item.diasSemResposta === 1 ? "dia" : "dias"}
           </Badge>
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        <Badge tom="info">{ETAPAS[item.etapa]}</Badge>
-        <span>
-          {item.followups === 0 ? "Nenhum follow-up ainda" : `${item.followups} follow-up${item.followups > 1 ? "s" : ""} feito${item.followups > 1 ? "s" : ""}`}
-          {" · "}enviado há {item.diasDesdeEnvio} {item.diasDesdeEnvio === 1 ? "dia" : "dias"}
-        </span>
-      </div>
+      <details className="group">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm text-muted hover:text-fg [&::-webkit-details-marker]:hidden">
+          {ETAPAS[item.etapa]} · {item.followups ? `${item.followups} contato(s)` : "1º contato"}
+          <ChevronDown className="size-4 transition group-open:rotate-180" />
+        </summary>
+        <textarea
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          rows={6}
+          className="input mt-2 text-sm leading-relaxed"
+          disabled={gerando}
+          aria-label="Mensagem de follow-up"
+        />
+      </details>
 
-      <textarea
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        rows={7}
-        className="input text-sm leading-relaxed"
-        disabled={gerando}
-        aria-label="Mensagem de follow-up"
-      />
-
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="flex gap-2">
         {item.clienteTelefone ? (
           <a
             href={linkWhatsApp(item.clienteTelefone, texto)}
             target="_blank"
             rel="noreferrer"
             onClick={() => iniciar(() => registrarFollowup(item.id))}
-            className="btn btn-whatsapp col-span-2 sm:col-span-1"
+            className="btn btn-whatsapp flex-1"
           >
-            <MessageCircle className="size-4" /> Abrir no WhatsApp
+            {gerando ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />} Enviar no WhatsApp
           </a>
         ) : (
-          <p className="col-span-2 rounded-xl bg-warn-soft p-2 text-sm text-warn">
-            Cliente sem telefone cadastrado.
-          </p>
+          <p className="flex-1 rounded-xl bg-warn-soft p-2 text-sm text-warn">Cliente sem telefone.</p>
         )}
-        <button onClick={gerarComIA} disabled={gerando} className="btn btn-secondary col-span-2 sm:col-span-1">
-          {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-          {gerando ? "Escrevendo…" : "Gerar com IA"}
-        </button>
-        <button
-          disabled={pendente}
-          onClick={() => iniciar(() => marcarResposta(item.id, "aprovado"))}
-          className="btn bg-ok-soft text-ok hover:brightness-95"
-        >
-          <Check className="size-4" /> Aprovado
-        </button>
-        <button
-          disabled={pendente}
-          onClick={() => {
-            if (confirm("Marcar este orçamento como recusado?")) iniciar(() => marcarResposta(item.id, "recusado"));
-          }}
-          className="btn btn-danger"
-        >
-          <X className="size-4" /> Recusado
-        </button>
+        <MenuAcoes
+          acoes={[
+            { rotulo: "Reescrever com IA", icone: <Sparkles />, onClick: gerarComIA },
+            { rotulo: "Aprovado", icone: <Check />, onClick: () => iniciar(() => marcarResposta(item.id, "aprovado")) },
+            {
+              rotulo: "Recusado",
+              icone: <X />,
+              perigo: true,
+              onClick: () => {
+                if (confirm("Marcar este orçamento como recusado?")) iniciar(() => marcarResposta(item.id, "recusado"));
+              },
+            },
+          ]}
+        />
       </div>
     </article>
   );

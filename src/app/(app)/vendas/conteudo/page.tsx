@@ -6,7 +6,7 @@ export const metadata = { title: "Conteúdo com IA" };
 export default function ConteudoPage() {
   return (
     <>
-      <Cabecalho titulo="Conteúdo com IA" subtitulo="Posts, roteiros e mensagens prontos para usar" />
+      <Cabecalho titulo="Conteúdo com IA" />
       <GeradorConteudo />
     </>
   );

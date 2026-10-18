@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Clock, Loader2, Save, Wrench } from "lucide-react";
+import { Check, ChevronDown, Clock, Loader2, Save, Wrench } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Ajuda } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import { salvarValorHora } from "@/app/(app)/vendas/actions";
 import { reais } from "@/lib/formato";
@@ -39,7 +40,7 @@ function CampoNumero({
   sufixo?: string;
 }) {
   return (
-    <Campo rotulo={rotulo} dica={dica}>
+    <Campo rotulo={rotulo} ajuda={dica}>
       <div className="relative">
         {prefixo && <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted">{prefixo}</span>}
         <input
@@ -88,13 +89,22 @@ export function CalculadoraPrecos({ valorHoraSalvo }: { valorHoraSalvo: number |
     <div className="grid gap-5 lg:grid-cols-2">
       <section className="card space-y-4 p-4 md:p-5">
         <div>
-          <h2 className="flex items-center gap-2 font-semibold"><Clock className="size-4 text-accent" /> Quanto vale sua hora</h2>
-          <p className="text-sm text-muted">Descubra o mínimo que você precisa cobrar por hora para pagar as contas e ainda sobrar.</p>
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Clock className="size-4 text-accent" /> Quanto vale sua hora
+            <Ajuda titulo="Quanto vale sua hora">
+              <p>O mínimo que você precisa cobrar por hora para pagar as contas e ainda sobrar.</p>
+            </Ajuda>
+          </h2>
         </div>
 
-        <fieldset className="space-y-3">
-          <legend className="mb-2 text-sm font-semibold">Custos fixos por mês</legend>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <details className="group rounded-2xl border border-border p-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            Custos fixos por mês
+            <span className="flex items-center gap-1 font-normal text-muted">
+              {reais(totalCustos)} <ChevronDown className="size-4 transition group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {CUSTOS.map((c) => (
               <CampoNumero
                 key={c.chave}
@@ -106,11 +116,10 @@ export function CalculadoraPrecos({ valorHoraSalvo }: { valorHoraSalvo: number |
               />
             ))}
           </div>
-          <p className="text-right text-sm text-muted">Total: <span className="font-semibold text-fg">{reais(totalCustos)}</span></p>
-        </fieldset>
+        </details>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <CampoNumero rotulo="Quanto quer tirar por mês (pró-labore)" dica="Seu “salário” limpo" prefixo="R$" valor={proLabore} aoMudar={setProLabore} />
+          <CampoNumero rotulo="Pró-labore (mês)" dica="Seu “salário” limpo" prefixo="R$" valor={proLabore} aoMudar={setProLabore} />
           <CampoNumero rotulo="Reserva / margem" dica="Para meses fracos, férias e imprevistos" sufixo="%" valor={reserva} aoMudar={setReserva} />
           <CampoNumero rotulo="Dias trabalhados por mês" valor={dias} aoMudar={setDias} />
           <CampoNumero rotulo="Horas por dia" valor={horasDia} aoMudar={setHorasDia} />
@@ -152,19 +161,18 @@ export function CalculadoraPrecos({ valorHoraSalvo }: { valorHoraSalvo: number |
       <section className="card h-fit space-y-4 p-4 md:p-5">
         <div>
           <h2 className="flex items-center gap-2 font-semibold"><Wrench className="size-4 text-accent" /> Simular preço de um serviço</h2>
-          <p className="text-sm text-muted">Use para responder rápido no WhatsApp sem chutar valor.</p>
         </div>
 
         {valorHoraSalvo !== null && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={usarSalvo} onChange={(e) => setUsarSalvo(e.target.checked)} className="size-4 accent-[var(--accent)]" />
-            Usar minha hora salva ({reais(valorHoraSalvo)}) em vez da calculada ao lado
+            Usar minha hora salva ({reais(valorHoraSalvo)})
           </label>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <CampoNumero rotulo="Horas estimadas do serviço" dica="Inclua tempo de teste e limpeza" valor={horas} aoMudar={setHoras} sufixo="h" />
-          <CampoNumero rotulo="Valor mínimo de visita" dica="Nenhum serviço sai por menos que isso" prefixo="R$" valor={visitaMinima} aoMudar={setVisitaMinima} />
+          <CampoNumero rotulo="Horas do serviço" dica="Inclua tempo de teste e limpeza" valor={horas} aoMudar={setHoras} sufixo="h" />
+          <CampoNumero rotulo="Visita mínima" dica="Nenhum serviço sai por menos que isso" prefixo="R$" valor={visitaMinima} aoMudar={setVisitaMinima} />
           <CampoNumero rotulo="Deslocamento" prefixo="R$" valor={deslocamento} aoMudar={setDeslocamento} />
           <CampoNumero rotulo="Materiais (custo)" dica="Se você compra o material" prefixo="R$" valor={materiais} aoMudar={setMateriais} />
           <CampoNumero rotulo="Margem sobre material" dica="Cobre tempo de compra e garantia" sufixo="%" valor={margemMaterial} aoMudar={setMargemMaterial} />
@@ -174,11 +182,16 @@ export function CalculadoraPrecos({ valorHoraSalvo }: { valorHoraSalvo: number |
           <div className="flex justify-between"><dt className="text-muted">Mão de obra</dt><dd>{reais(maoDeObra)}</dd></div>
           <div className="flex justify-between"><dt className="text-muted">Deslocamento</dt><dd>{reais(num(deslocamento))}</dd></div>
           <div className="flex justify-between"><dt className="text-muted">Material</dt><dd>{reais(materialCobrado)}</dd></div>
-          <div className="flex justify-between border-t border-border pt-2 text-base font-bold"><dt>Preço sugerido</dt><dd>{reais(precoFinal)}</dd></div>
+          <div className="flex items-center justify-between border-t border-border pt-2 text-base font-bold">
+            <dt className="flex items-center gap-1">
+              Preço sugerido
+              <Ajuda titulo="Como apresentar o preço">
+                <p>Apresente o valor com segurança e explique o que está incluso (material de qualidade, teste, garantia). Evite dar desconto logo de cara. Ofereça parcelamento.</p>
+              </Ajuda>
+            </dt>
+            <dd>{reais(precoFinal)}</dd>
+          </div>
         </dl>
-        <p className="text-xs text-muted">
-          Dica: apresente o valor com segurança e explique o que está incluso (material de qualidade, teste, garantia). Evite dar desconto logo de cara. Ofereça parcelamento.
-        </p>
       </section>
     </div>
   );

@@ -1,5 +1,5 @@
 import { count, desc } from "drizzle-orm";
-import { ArrowRight, BarChart3, Clock, FilePen, MessageCircle, Sparkles, Target, TrendingUp, Wallet } from "lucide-react";
+import { ArrowRight, BarChart3, Clock, FilePen, MessageCircle, Target, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Cabecalho, Vazio } from "@/components/ui";
 import { clientes, db } from "@/db";
@@ -64,51 +64,53 @@ export default async function PainelVendasPage() {
 
   return (
     <>
-      <Cabecalho titulo="Vendas & Marketing" subtitulo="Seus números, follow-ups e ferramentas para vender mais" />
+      <Cabecalho
+        titulo="Vendas"
+        ajuda={
+          <>
+            <p>
+              <strong>Conversão:</strong> orçamentos aprovados ÷ enviados. Entre os que responderam: {pct(conversaoRespondidos)}.
+            </p>
+            <p>
+              <strong>Ticket médio:</strong> valor médio dos {ganhos.length} orçamento(s) fechado(s).
+            </p>
+            <p>Invista mais no canal que mais traz cliente (gráfico de origem).</p>
+          </>
+        }
+      />
 
       {(followupsPendentes.length > 0 || rascunhosParados.length > 0) && (
-        <section className="mb-5 grid gap-2 sm:grid-cols-2">
+        <section className="card mb-4 divide-y divide-border">
           {followupsPendentes.length > 0 && (
-            <Link href="/vendas/followup" className="card flex items-center gap-3 border-info/40 bg-info-soft p-4">
-              <MessageCircle className="size-6 shrink-0 text-info" />
-              <div className="flex-1">
-                <p className="font-semibold">
-                  {followupsPendentes.length} {followupsPendentes.length === 1 ? "cliente esperando" : "clientes esperando"} seu retorno
-                </p>
-                <p className="text-sm text-muted">
-                  {reais(followupsPendentes.reduce((a, o) => a + o.total, 0))} em orçamentos sem resposta há 3+ dias
-                </p>
-              </div>
-              <ArrowRight className="size-5 text-muted" />
+            <Link href="/vendas/followup" className="flex items-center gap-3 px-4 py-3 text-sm">
+              <MessageCircle className="size-4 shrink-0 text-info" />
+              <span className="min-w-0 flex-1 truncate">
+                {followupsPendentes.length} sem resposta · {reais(followupsPendentes.reduce((a, o) => a + o.total, 0))}
+              </span>
+              <ArrowRight className="size-4 text-muted" />
             </Link>
           )}
           {rascunhosParados.length > 0 && (
-            <Link href="/orcamentos" className="card flex items-center gap-3 border-warn/40 bg-warn-soft p-4">
-              <FilePen className="size-6 shrink-0 text-warn" />
-              <div className="flex-1">
-                <p className="font-semibold">
-                  {rascunhosParados.length} {rascunhosParados.length === 1 ? "orçamento parado" : "orçamentos parados"} em rascunho
-                </p>
-                <p className="text-sm text-muted">Orçamento rápido fecha mais. Termine e envie hoje.</p>
-              </div>
-              <ArrowRight className="size-5 text-muted" />
+            <Link href="/orcamentos?status=rascunho" className="flex items-center gap-3 px-4 py-3 text-sm">
+              <FilePen className="size-4 shrink-0 text-warn" />
+              <span className="min-w-0 flex-1 truncate">{rascunhosParados.length} rascunho(s) parado(s)</span>
+              <ArrowRight className="size-4 text-muted" />
             </Link>
           )}
         </section>
       )}
 
       <section className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Indicador icone={Target} rotulo="Conversão" valor={pct(conversao)} dica={`${pct(conversaoRespondidos)} dos que responderam`} />
-        <Indicador icone={TrendingUp} rotulo="Ticket médio" valor={ticketMedio === null ? "—" : reais(ticketMedio)} dica={`${ganhos.length} fechados`} />
-        <Indicador icone={Clock} rotulo="Aguardando resposta" valor={reais(porStatus.enviado.valor)} dica={`${porStatus.enviado.qtd} orçamentos`} />
-        <Indicador icone={Wallet} rotulo="Fechado no mês" valor={reais(faturamentoMes)} dica="aprovados + executados" />
+        <Indicador icone={Target} rotulo="Conversão" valor={pct(conversao)} />
+        <Indicador icone={TrendingUp} rotulo="Ticket médio" valor={ticketMedio === null ? "—" : reais(ticketMedio)} />
+        <Indicador icone={Clock} rotulo="Aguardando" valor={reais(porStatus.enviado.valor)} />
+        <Indicador icone={Wallet} rotulo="Fechado no mês" valor={reais(faturamentoMes)} />
       </section>
 
       {orcs.length === 0 ? (
         <Vazio
           icone={BarChart3}
           titulo="Ainda não há orçamentos"
-          texto="Assim que você criar e enviar orçamentos, o funil de vendas aparece aqui."
           acao={<Link href="/orcamentos/novo" className="btn btn-primary">Fazer orçamento</Link>}
         />
       ) : (
@@ -136,10 +138,9 @@ export default async function PainelVendasPage() {
       )}
 
       <section className="card mb-5 p-4">
-        <h2 className="mb-1 font-semibold">De onde vêm seus clientes</h2>
-        <p className="mb-3 text-sm text-muted">Invista mais no canal que mais traz cliente.</p>
+        <h2 className="mb-3 font-semibold">Origem dos clientes</h2>
         {totalClientes === 0 ? (
-          <p className="text-sm text-muted">Cadastre clientes informando “como chegou até você”.</p>
+          <p className="text-sm text-muted">Sem dados ainda.</p>
         ) : (
           <ul className="space-y-2.5">
             {origens.map((o) => (
@@ -155,24 +156,6 @@ export default async function PainelVendasPage() {
         )}
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-2">
-        <Link href="/vendas/conteudo" className="card flex items-center gap-3 p-4 transition hover:border-accent">
-          <Sparkles className="size-6 shrink-0 text-accent" />
-          <div className="flex-1">
-            <p className="font-semibold">Criar post ou mensagem com IA</p>
-            <p className="text-sm text-muted">Instagram, Google, WhatsApp, objeções</p>
-          </div>
-          <ArrowRight className="size-5 text-muted" />
-        </Link>
-        <Link href="/vendas/plano" className="card flex items-center gap-3 p-4 transition hover:border-accent">
-          <Target className="size-6 shrink-0 text-accent" />
-          <div className="flex-1">
-            <p className="font-semibold">Plano de crescimento 90 dias</p>
-            <p className="text-sm text-muted">Passo a passo para conseguir clientes</p>
-          </div>
-          <ArrowRight className="size-5 text-muted" />
-        </Link>
-      </section>
     </>
   );
 }
@@ -181,12 +164,10 @@ function Indicador({
   icone: Icone,
   rotulo,
   valor,
-  dica,
 }: {
   icone: React.ComponentType<{ className?: string }>;
   rotulo: string;
   valor: string;
-  dica: string;
 }) {
   return (
     <div className="card p-3.5">
@@ -194,7 +175,6 @@ function Indicador({
         <Icone className="size-3.5" /> {rotulo}
       </p>
       <p className="truncate text-lg font-bold tracking-tight">{valor}</p>
-      <p className="truncate text-xs text-muted">{dica}</p>
     </div>
   );
 }

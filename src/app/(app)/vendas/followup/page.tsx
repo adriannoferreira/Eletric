@@ -54,18 +54,13 @@ export default async function FollowupPage() {
     <>
       <Cabecalho
         titulo="Follow-up"
-        subtitulo="Orçamentos enviados há 3 dias ou mais sem resposta. Quem acompanha, fecha mais."
+        ajuda={<p>Orçamentos enviados há 3 dias ou mais sem resposta aparecem aqui com a mensagem pronta. Quem acompanha, fecha mais.</p>}
       />
 
       {pendentes.length === 0 ? (
         <Vazio
           icone={enviados.length > 0 ? PartyPopper : MessageCircle}
-          titulo={enviados.length > 0 ? "Nenhum follow-up pendente hoje" : "Nenhum orçamento aguardando resposta"}
-          texto={
-            enviados.length > 0
-              ? "Os orçamentos enviados ainda estão dentro do prazo de espera."
-              : "Quando você enviar um orçamento e o cliente não responder em 3 dias, ele aparece aqui com a mensagem pronta."
-          }
+          titulo={enviados.length > 0 ? "Nada pendente hoje" : "Nenhum orçamento aguardando"}
         />
       ) : (
         <>
