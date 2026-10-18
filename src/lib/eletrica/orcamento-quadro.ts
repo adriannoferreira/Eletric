@@ -5,7 +5,7 @@
  */
 import { capacidadeTotal } from "./caixas";
 import { listaMateriaisCompleta } from "./ligacoes";
-import { analisarQuadro, type AnaliseQuadro, listaMateriais } from "./calculo";
+import { analisarQuadro, type AnaliseQuadro } from "./calculo";
 import { peca } from "./pecas";
 import type { QuadroDados } from "./tipos";
 

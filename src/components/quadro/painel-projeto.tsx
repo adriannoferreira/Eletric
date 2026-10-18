@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { salvarMemorial } from "@/app/(app)/quadros/actions";
 import { Sk } from "@/components/skeleton";
 import { lerStream, TextoIA } from "@/components/texto-ia";
-import { type AnaliseQuadro, listaMateriais } from "@/lib/eletrica/calculo";
+import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import type { QuadroDados } from "@/lib/eletrica/tipos";
 import { ListaMateriais } from "./materiais";
 import { BlocoDemanda, demandaDoQuadro, descreverObra, ListaSeguranca, TabelaCargas } from "./projeto-blocos";
