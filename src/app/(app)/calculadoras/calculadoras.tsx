@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ListaAlertas } from "@/components/quadro/alertas";
+import { Conferir, Ref } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import {
   capacidadeCorrigida,
@@ -38,9 +39,21 @@ export function Calculadoras() {
   const [aba, setAba] = useState<(typeof ABAS)[number]["id"]>("cabo");
   return (
     <div className="space-y-4">
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+      <select
+        value={aba}
+        onChange={(e) => setAba(e.target.value as (typeof ABAS)[number]["id"])}
+        className="input text-base font-semibold md:hidden"
+        aria-label="Calculadora"
+      >
         {ABAS.map((a) => (
-          <button key={a.id} onClick={() => setAba(a.id)} className={`btn shrink-0 py-2 ${aba === a.id ? "btn-primary" : "btn-secondary"}`}>
+          <option key={a.id} value={a.id}>
+            {a.rotulo}
+          </option>
+        ))}
+      </select>
+      <div className="hidden flex-wrap gap-1.5 md:flex">
+        {ABAS.map((a) => (
+          <button key={a.id} onClick={() => setAba(a.id)} className={`rounded-full px-3.5 py-1.5 text-sm font-medium ${aba === a.id ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted"}`}>
             {a.rotulo}
           </button>
         ))}
@@ -57,11 +70,14 @@ export function Calculadoras() {
       {aba === "ve" && <CalcVE />}
       {aba === "eletroduto" && <CalcEletroduto />}
       {aba === "padrao" && <CalcPadraoEquatorial />}
-      {["cabo", "corrente", "queda", "disjuntor"].includes(aba) && <p className="text-xs text-muted">
-        Cobre, isolação PVC 70 °C, Tabelas 36, 40 e 42 da NBR 5410:2004 (versão corrigida 2008). Queda de tensão
-        pelo método simplificado (resistência a 70 °C, sem reatância). Confira sempre a edição vigente da norma e o
-        catálogo do fabricante.
-      </p>}
+      {["cabo", "corrente", "queda", "disjuntor"].includes(aba) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Ref norma="NBR 5410" item="Tab. 36, 40, 42">
+            <p>Cobre, isolação PVC 70 °C, Tabelas 36, 40 e 42 da NBR 5410:2004 (versão corrigida 2008). Queda de tensão pelo método simplificado (resistência a 70 °C, sem reatância).</p>
+          </Ref>
+          <Conferir itens={["Edição vigente da NBR 5410.", "Catálogo do fabricante do cabo e do disjuntor."]} />
+        </div>
+      )}
     </div>
   );
 }

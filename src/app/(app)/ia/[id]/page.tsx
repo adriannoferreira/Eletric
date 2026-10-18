@@ -13,7 +13,7 @@ export default async function ConversaIAPage({ params }: PageProps<"/ia/[id]">) 
       basePath="/ia"
       conversaId={id}
       titulo="IA Especialista em Elétrica"
-      subtitulo="NBR 5410, NR-10, dimensionamento e diagnóstico"
+      subtitulo="NBR 5410 e NR-10"
       sugestoes={SUGESTOES_ELETRICA}
     />
   );

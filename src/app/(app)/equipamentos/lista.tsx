@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Boxes, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
+import { MaisOpcoes } from "@/components/divulgacao";
 import { Badge, Campo, Vazio } from "@/components/ui";
 import type { Equipamento } from "@/db/schema";
 import { dataCurta, reais } from "@/lib/formato";
@@ -23,35 +24,30 @@ export function ListaEquipamentos({ itens }: { itens: Equipamento[] }) {
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3">
-        <div className="card p-4">
-          <p className="text-xs text-muted">Itens</p>
-          <p className="text-2xl font-bold">{itens.length}</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-muted">Valor investido</p>
-          <p className="text-2xl font-bold">{reais(total)}</p>
-        </div>
-        <button onClick={() => setEditando("novo")} className="btn btn-primary col-span-2 md:col-span-1">
-          <Plus className="size-4" /> Novo equipamento
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          {itens.length} {itens.length === 1 ? "item" : "itens"} · {reais(total)}
+        </p>
+        <button onClick={() => setEditando("novo")} className="btn btn-primary">
+          <Plus className="size-4" /> Novo
         </button>
       </div>
 
       {vencendo.length > 0 && (
-        <div className="mb-4 flex gap-3 rounded-2xl bg-warn-soft p-4 text-sm text-warn">
-          <AlertTriangle className="size-5 shrink-0" />
-          <div>
-            <p className="font-semibold">Calibração / validade próxima</p>
-            {vencendo.map((i) => {
-              const d = diasAte(i.proximaVerificacao)!;
-              return <p key={i.id}>{i.nome}: {d < 0 ? `venceu há ${-d} dias` : `vence em ${d} dias`}</p>;
-            })}
-          </div>
+        <div className="mb-4 space-y-1 rounded-2xl bg-warn-soft p-3 text-sm text-warn">
+          {vencendo.map((i) => {
+            const d = diasAte(i.proximaVerificacao)!;
+            return (
+              <p key={i.id} className="flex items-center gap-2 truncate">
+                <AlertTriangle className="size-4 shrink-0" /> {i.nome}: {d < 0 ? `venceu há ${-d} dias` : `vence em ${d} dias`}
+              </p>
+            );
+          })}
         </div>
       )}
 
       {itens.length === 0 ? (
-        <Vazio icone={Boxes} titulo="Nenhum equipamento" texto="Cadastre ferramentas, instrumentos (multímetro, alicate amperímetro, megômetro) e EPIs para controlar calibração e validade." />
+        <Vazio icone={Boxes} titulo="Nenhum equipamento" />
       ) : (
         <ul className="grid gap-2 md:grid-cols-2">
           {itens.map((i) => {
@@ -121,16 +117,20 @@ function FormEquipamento({ item, aoFechar }: { item?: Equipamento; aoFechar: () 
               {Object.entries(STATUS_EQUIPAMENTO).map(([v, s]) => <option key={v} value={v}>{s.rotulo}</option>)}
             </select>
           </Campo>
-          <Campo rotulo="Marca"><input name="marca" defaultValue={item?.marca} className="input" /></Campo>
-          <Campo rotulo="Modelo"><input name="modelo" defaultValue={item?.modelo} className="input" /></Campo>
-          <Campo rotulo="Nº de série"><input name="numeroSerie" defaultValue={item?.numeroSerie} className="input" /></Campo>
-          <Campo rotulo="Valor (R$)"><input name="valor" inputMode="decimal" defaultValue={item?.valor ?? ""} className="input" /></Campo>
-          <Campo rotulo="Data de compra"><input name="dataCompra" type="date" defaultValue={item?.dataCompra ?? ""} className="input" /></Campo>
-          <Campo rotulo="Próx. calibração/validade"><input name="proximaVerificacao" type="date" defaultValue={item?.proximaVerificacao ?? ""} className="input" /></Campo>
+          <Campo rotulo="Calibração / validade" className="col-span-2"><input name="proximaVerificacao" type="date" defaultValue={item?.proximaVerificacao ?? ""} className="input" /></Campo>
         </div>
-        <Campo rotulo="Observações">
-          <textarea name="observacoes" rows={2} defaultValue={item?.observacoes} className="input" />
-        </Campo>
+        <MaisOpcoes>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo rotulo="Marca"><input name="marca" defaultValue={item?.marca} className="input" /></Campo>
+            <Campo rotulo="Modelo"><input name="modelo" defaultValue={item?.modelo} className="input" /></Campo>
+            <Campo rotulo="Nº de série"><input name="numeroSerie" defaultValue={item?.numeroSerie} className="input" /></Campo>
+            <Campo rotulo="Valor (R$)"><input name="valor" inputMode="decimal" defaultValue={item?.valor ?? ""} className="input" /></Campo>
+            <Campo rotulo="Data de compra" className="col-span-2"><input name="dataCompra" type="date" defaultValue={item?.dataCompra ?? ""} className="input" /></Campo>
+          </div>
+          <Campo rotulo="Observações">
+            <textarea name="observacoes" rows={2} defaultValue={item?.observacoes} className="input" />
+          </Campo>
+        </MaisOpcoes>
         {erro && <p className="text-sm text-danger">{erro}</p>}
         <div className="flex gap-2">
           {item && (

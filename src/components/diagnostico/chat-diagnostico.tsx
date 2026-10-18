@@ -1,5 +1,6 @@
 "use client";
 
+import { Ajuda } from "@/components/divulgacao";
 import { ArrowUp, Camera, ClipboardList, FilePlus2, History, Loader2, Plus, Stethoscope, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -108,9 +109,12 @@ export function ChatDiagnostico({
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent text-accent-fg">
             <Stethoscope className="size-5" />
           </span>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Diagnóstico de defeitos</h1>
-            <p className="text-sm text-muted">Descreva o problema e mande fotos — a IA guia os testes</p>
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-bold tracking-tight">Diagnóstico</h1>
+            <Ajuda titulo="Diagnóstico de defeitos">
+              <p>Descreva o problema e mande fotos: a IA guia os testes passo a passo.</p>
+              <p>Inclua o tipo de imóvel, há quanto tempo acontece, o que mudou recentemente e fotos do quadro e do ponto com defeito.</p>
+            </Ajuda>
           </div>
         </div>
         <div className="flex gap-1">
@@ -130,7 +134,7 @@ export function ChatDiagnostico({
       <div className="flex-1 space-y-4">
         {msgs.length === 0 && (
           <div className="space-y-3">
-            <p className="text-sm text-muted">Qual é o sintoma? Toque para começar ou descreva abaixo:</p>
+            <p className="text-sm text-muted">Qual é o sintoma?</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {SINTOMAS.map((s) => (
                 <button key={s} onClick={() => setTexto(s + ". ")} className="card p-3 text-left text-sm transition hover:border-accent">
@@ -138,7 +142,6 @@ export function ChatDiagnostico({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted">Dica: inclua o tipo de imóvel, há quanto tempo acontece, o que mudou recentemente e mande fotos do quadro e do ponto com defeito.</p>
           </div>
         )}
         {msgs.map((m, i) =>

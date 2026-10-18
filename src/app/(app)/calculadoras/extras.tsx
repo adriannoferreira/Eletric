@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Ajuda } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import { reais } from "@/lib/formato";
 import {
@@ -37,13 +38,18 @@ function Res({ itens }: { itens: [string, string][] }) {
   );
 }
 
+/** Observações do cálculo: escondidas atrás do (?) para não poluir a tela. */
 function Nota({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-xl bg-info-soft p-3 text-xs text-info">{children}</p>;
+  return (
+    <p className="flex items-center gap-1 text-xs text-muted">
+      Observações <Ajuda titulo="Observações do cálculo">{children}</Ajuda>
+    </p>
+  );
 }
 
 function N({ rotulo, valor, set, dica }: { rotulo: string; valor: string; set: (v: string) => void; dica?: string }) {
   return (
-    <Campo rotulo={rotulo} dica={dica}>
+    <Campo rotulo={rotulo} ajuda={dica}>
       <input className="input" inputMode="decimal" value={valor} onChange={(e) => set(e.target.value)} />
     </Campo>
   );

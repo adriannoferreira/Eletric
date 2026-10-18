@@ -6,7 +6,7 @@ export const metadata = { title: "Calculadoras" };
 export default function CalculadorasPage() {
   return (
     <>
-      <Cabecalho titulo="Calculadoras" subtitulo="Dimensionamento, iluminação, consumo, motores, solar e mais" />
+      <Cabecalho titulo="Calculadoras" />
       <Calculadoras />
     </>
   );
