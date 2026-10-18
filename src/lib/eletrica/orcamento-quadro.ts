@@ -8,12 +8,16 @@ import { listaMateriaisCompleta } from "./ligacoes";
 import { analisarQuadro, type AnaliseQuadro } from "./calculo";
 import { peca } from "./pecas";
 import type { QuadroDados } from "./tipos";
+import { type Especificacao, resolverVariante } from "../precos/variantes";
 
 export interface ItemCatalogoSimples {
   tipo: string;
   nome: string;
   unidade: string;
   preco: number;
+  /** Família e atributos técnicos (variantes). Itens antigos: inferidos pelo nome. */
+  familia?: string | null;
+  atributos?: Record<string, unknown> | null;
 }
 
 export interface ItemOrcamentoGerado {
@@ -43,9 +47,15 @@ interface Busca {
   tipo: "servico" | "material";
   exige: RegExp[];
   prefere?: RegExp[];
+  /** Material com especificação técnica: casa só a variante exata (nunca outra corrente/seção). */
+  variante?: Especificacao;
 }
 
 export function buscarPreco(catalogo: ItemCatalogoSimples[], b: Busca): ItemCatalogoSimples | null {
+  if (b.variante) {
+    const r = resolverVariante(catalogo, b.variante);
+    return r.status === "ok" ? r.item : null;
+  }
   let melhor: ItemCatalogoSimples | null = null;
   let pontos = -1;
   for (const c of catalogo) {
@@ -64,29 +74,36 @@ export function buscarPreco(catalogo: ItemCatalogoSimples[], b: Busca): ItemCata
 const num = (n: number) => String(n).replace(".", ",");
 const reSecao = (s: number) => new RegExp(`(^|[^\\d,])${num(s).replace(",", "[,.]")} ?mm`);
 
+/** Especificação técnica (família + atributos) de uma peça do construtor. */
+export function varianteDaPeca(pecaId: string): Especificacao | null {
+  const p = peca(pecaId);
+  if (!p) return null;
+  if (p.tipo === "disjuntor" && p.correnteNominal) {
+    return p.padrao === "NEMA"
+      ? { familia: "disjuntor_nema", atributos: { polos: p.polos, corrente: p.correnteNominal } }
+      : { familia: "disjuntor_din", atributos: { polos: p.polos, curva: p.curva ?? "C", corrente: p.correnteNominal } };
+  }
+  if (p.tipo === "dr" && p.correnteNominal) {
+    return { familia: "dr", atributos: { polos: p.polos, corrente: p.correnteNominal, idnMa: p.sensibilidadeMa ?? 30 } };
+  }
+  if (p.tipo === "dps" && p.ucV && p.imaxKa) {
+    return { familia: "dps", atributos: { classe: "II", ucV: p.ucV, imaxKa: p.imaxKa } };
+  }
+  return null;
+}
+
 /** Critério de busca para cada item da lista de materiais. */
 function buscaMaterial(descricao: string, pecaId?: string): Busca | null {
   const p = pecaId ? peca(pecaId) : undefined;
-  if (p?.tipo === "disjuntor") {
-    return {
-      tipo: "material",
-      exige: [/disjuntor/, new RegExp(`\\b${p.polos} ?p\\b|${["", "mono", "bi", "tri"][p.polos]}polar`)],
-      prefere: [new RegExp(`curva ${p.curva?.toLowerCase()}`), new RegExp(`\\b${p.curva?.toLowerCase()} ?${p.correnteNominal}\\b|\\b${p.correnteNominal} ?a\\b`)],
-    };
-  }
-  if (p?.tipo === "dr") {
-    return {
-      tipo: "material",
-      exige: [/\b(dr|idr|diferencial)\b/, new RegExp(`\\b${p.polos} ?p\\b`), new RegExp(`\\b${p.correnteNominal} ?a\\b`)],
-    };
-  }
-  if (p?.tipo === "dps") {
-    return { tipo: "material", exige: [/\bdps\b/], prefere: [new RegExp(`${p.ucV} ?v`), new RegExp(`${p.imaxKa} ?ka`)] };
-  }
+  const v = pecaId ? varianteDaPeca(pecaId) : null;
+  if (v) return { tipo: "material", exige: [], variante: v };
   if (p?.tipo === "seccionadora") return { tipo: "material", exige: [/seccionadora|interruptor de manobra/] };
   const d = normalizar(descricao);
   const cabo = d.match(/cabo flexivel ([\d,]+) mm2/);
-  if (cabo) return { tipo: "material", exige: [/cabo/, reSecao(Number(cabo[1].replace(",", ".")))] };
+  if (cabo) {
+    const secao = Number(cabo[1].replace(",", "."));
+    return { tipo: "material", exige: [/cabo/, reSecao(secao)], variante: { familia: "cabo_flexivel", atributos: { secao } } };
+  }
   const quadro = d.match(/quadro de distribuicao.* (\d+) modulos/);
   if (quadro) {
     const instalacao = d.includes("sobrepor") ? /sobrepor/ : /embutir/;

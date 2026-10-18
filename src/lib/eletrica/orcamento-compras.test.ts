@@ -26,9 +26,17 @@ describe("orçamento a partir do quadro", () => {
     expect(itens.some((i) => i.tipo === "material")).toBe(true);
     expect(itens.some((i) => i.tipo === "servico")).toBe(true);
   });
-  it("disjuntores e cabos com preço do catálogo", () => {
-    const dj = itens.find((i) => i.descricao.startsWith("Disjuntor 1P"));
-    expect(dj?.precoUnitario).toBe(18);
+  it("disjuntor genérico (sem corrente) não serve de preço; só a variante exata", () => {
+    const generico = [{ tipo: "material", nome: "Disjuntor DIN 1P curva C", unidade: "un", preco: 18 }];
+    const semVariante = itensOrcamentoDoQuadro(casa, generico).filter((i) => i.descricao.startsWith("Disjuntor 1P"));
+    expect(semVariante.length).toBeGreaterThan(0);
+    expect(semVariante.every((i) => i.semPreco && i.precoUnitario === 0)).toBe(true);
+    const primeiro = semVariante[0].descricao.match(/Disjuntor 1P ([BC])(\d+)/)!;
+    const exato = [{ tipo: "material", nome: `Disjuntor DIN 1P curva ${primeiro[1]} ${primeiro[2]} A`, unidade: "un", preco: 21 }];
+    const comVariante = itensOrcamentoDoQuadro(casa, exato).find((i) => i.descricao.startsWith(`Disjuntor 1P ${primeiro[1]}${primeiro[2]}`));
+    expect(comVariante?.precoUnitario).toBe(21);
+  });
+  it("cabos com preço do catálogo", () => {
     const cabo = itens.find((i) => i.descricao.startsWith("Cabo flexível 2,5 mm²"));
     expect(cabo?.precoUnitario).toBe(3.5);
   });
