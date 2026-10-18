@@ -1,30 +1,6 @@
 "use client";
 
-import {
-  CalendarDays,
-  CheckCircle2,
-  ChevronLeft,
-  ClipboardCheck,
-  Clock,
-  ExternalLink,
-  FileText,
-  Image as ImageIcon,
-  MapPin,
-  MessageCircle,
-  MoreVertical,
-  Navigation,
-  Package,
-  Pause,
-  Pencil,
-  Phone,
-  Play,
-  Receipt,
-  RotateCcw,
-  Save,
-  Star,
-  Trash2,
-  XCircle,
-} from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardCheck, Clock, ExternalLink, FileText, Image as ImageIcon, Images, MapPin, MessageCircle, MoreVertical, Navigation, Package, Pause, Pencil, Phone, Play, Receipt, RotateCcw, Save, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { excluirOS, mudarStatusOS, salvarAssinatura, salvarCamposOS, salvarConfigServicos } from "@/app/(app)/os/actions";
@@ -341,6 +317,9 @@ function Conclusao(p: Props) {
           </a>
           <a href={`/os/${os.id}/recibo`} target="_blank" className="btn btn-secondary">
             <Receipt className="size-4" /> Recibo
+          </a>
+          <a href={`/os/${os.id}/fotos`} target="_blank" className="btn btn-secondary">
+            <Images className="size-4" /> Relatório fotográfico
           </a>
           <a
             href={cliente.telefone ? linkWhatsApp(cliente.telefone, msgRelatorio) : undefined}

@@ -18,6 +18,7 @@ import {
   visitas,
 } from "@/db";
 import { totais } from "@/lib/orcamento";
+import { gerarLegendas } from "@/lib/servicos/legendas-ia";
 import { CHECKLIST_PADRAO, criarChecklist } from "@/lib/servicos/checklists";
 import { guiaPorChave } from "@/lib/servicos/guias";
 import { deDataHoraLocal, podeMudar, type StatusOS } from "@/lib/servicos/os";
@@ -334,4 +335,35 @@ export async function excluirOS(id: number) {
   revalidatePath("/os");
   revalidatePath("/agenda");
   redirect("/os");
+}
+
+export async function atualizarLegenda(osId: number, fotoId: number, legenda: string) {
+  await db
+    .update(osFotos)
+    .set({ legenda: legenda.trim().slice(0, 200) })
+    .where(and(eq(osFotos.id, fotoId), eq(osFotos.osId, osId)));
+  revalidatePath(`/os/${osId}`);
+}
+
+/** Preenche com IA as legendas das fotos que ainda estão sem legenda (até 12 por vez). */
+export async function legendarFotosComIA(osId: number) {
+  const [os] = await db.select({ titulo: ordensServico.titulo }).from(ordensServico).where(eq(ordensServico.id, osId));
+  if (!os) return { erro: "OS não encontrada.", feitas: 0 };
+  const pendentes = (
+    await db.select().from(osFotos).where(eq(osFotos.osId, osId)).orderBy(asc(osFotos.id))
+  )
+    .filter((f) => !f.legenda.trim())
+    .slice(0, 12);
+  if (pendentes.length === 0) return { erro: null, feitas: 0 };
+
+  const r = await gerarLegendas(os.titulo, pendentes);
+  if ("erro" in r) return { erro: r.erro, feitas: 0 };
+  let feitas = 0;
+  for (const [i, f] of pendentes.entries()) {
+    if (!r.legendas[i]) continue;
+    await db.update(osFotos).set({ legenda: r.legendas[i] }).where(eq(osFotos.id, f.id));
+    feitas++;
+  }
+  revalidatePath(`/os/${osId}`);
+  return { erro: null, feitas };
 }

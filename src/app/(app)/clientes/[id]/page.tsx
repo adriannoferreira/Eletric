@@ -1,5 +1,5 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { FilePlus2, FileText, LayoutGrid, Mail, MapPin, MessageCircle, Pencil, Phone } from "lucide-react";
+import { FilePlus2, FileText, Images, LayoutGrid, Mail, MapPin, MessageCircle, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Cabecalho } from "@/components/ui";
@@ -124,6 +124,10 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
           </ul>
         </section>
       )}
+
+      <a href={`/clientes/${id}/fotos`} target="_blank" className="btn btn-secondary mb-4 w-full sm:w-auto">
+        <Images className="size-4" /> Relatório fotográfico da obra
+      </a>
 
       <ExcluirCliente id={id} />
     </>

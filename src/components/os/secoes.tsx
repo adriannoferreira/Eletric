@@ -1,13 +1,15 @@
 "use client";
 
-import { Camera, Check, Clock, Loader2, Pause, Play, Plus, Trash2, X } from "lucide-react";
+import { Camera, Check, Clock, Images, Loader2, Pause, Play, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   adicionarFoto,
+  atualizarLegenda,
   adicionarMaterial,
   agendarVisita,
   alternarCronometro,
   excluirFoto,
+  legendarFotosComIA,
   excluirHora,
   lancarHoras,
   mudarVisita,
@@ -378,8 +380,12 @@ const ETAPAS = [
 export function Fotos({ osId, fotos }: { osId: number; fotos: { id: number; etapa: string; legenda: string }[] }) {
   const [enviando, setEnviando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [ampliada, setAmpliada] = useState<number | null>(null);
+  const [legendando, setLegendando] = useState(false);
   const [, iniciar] = useTransition();
+  const fotoAmpliada = fotos.find((f) => f.id === ampliada);
+  const semLegenda = fotos.filter((f) => !f.legenda.trim()).length;
 
   async function enviar(etapa: (typeof ETAPAS)[number]["v"], arquivos: FileList | null) {
     if (!arquivos?.length) return;
@@ -398,6 +404,19 @@ export function Fotos({ osId, fotos }: { osId: number; fotos: { id: number; etap
     }
   }
 
+  async function legendarComIA() {
+    setErro(null);
+    setAviso(null);
+    setLegendando(true);
+    try {
+      const r = await legendarFotosComIA(osId);
+      if (r.erro) setErro(r.erro);
+      else setAviso(r.feitas ? `${r.feitas} legenda(s) criada(s). Revise tocando na foto.` : "Todas as fotos já têm legenda.");
+    } finally {
+      setLegendando(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {ETAPAS.map((et) => {
@@ -409,7 +428,12 @@ export function Fotos({ osId, fotos }: { osId: number; fotos: { id: number; etap
               {lista.map((f) => (
                 <div key={f.id} className="group relative aspect-square overflow-hidden rounded-xl bg-surface-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/os/foto/${f.id}`} alt={`Foto ${et.r.toLowerCase()}`} loading="lazy" className="size-full object-cover" onClick={() => setAmpliada(f.id)} />
+                  <img src={`/api/os/foto/${f.id}`} alt={f.legenda || `Foto ${et.r.toLowerCase()}`} loading="lazy" className="size-full object-cover" onClick={() => setAmpliada(f.id)} />
+                  {f.legenda && (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                      {f.legenda}
+                    </span>
+                  )}
                   <button
                     onClick={() => confirm("Excluir esta foto?") && iniciar(() => excluirFoto(osId, f.id))}
                     className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-black/60 text-white"
@@ -427,11 +451,45 @@ export function Fotos({ osId, fotos }: { osId: number; fotos: { id: number; etap
           </div>
         );
       })}
+      {fotos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button onClick={legendarComIA} disabled={legendando || semLegenda === 0} className="btn btn-secondary">
+            {legendando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {legendando ? "Legendando…" : `Legendas com IA${semLegenda ? ` (${semLegenda})` : ""}`}
+          </button>
+          <a href={`/os/${osId}/fotos`} target="_blank" className="btn btn-secondary">
+            <Images className="size-4" /> Relatório fotográfico
+          </a>
+        </div>
+      )}
+      {aviso && <p className="text-sm text-ok">{aviso}</p>}
       {erro && <p className="text-sm text-danger">{erro}</p>}
-      {ampliada && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4" onClick={() => setAmpliada(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/os/foto/${ampliada}`} alt="Foto ampliada" className="max-h-full max-w-full rounded-xl" />
+      {fotoAmpliada && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4" onClick={() => setAmpliada(null)}>
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/os/foto/${fotoAmpliada.id}`} alt={fotoAmpliada.legenda || "Foto ampliada"} className="max-h-full max-w-full rounded-xl" />
+          </div>
+          <form
+            key={fotoAmpliada.id}
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const legenda = String(new FormData(e.currentTarget).get("legenda") ?? "");
+              iniciar(() => atualizarLegenda(osId, fotoAmpliada.id, legenda));
+              setAmpliada(null);
+            }}
+            className="mx-auto mt-3 flex w-full max-w-lg gap-2 pb-[env(safe-area-inset-bottom)]"
+          >
+            <input
+              name="legenda"
+              defaultValue={fotoAmpliada.legenda}
+              maxLength={200}
+              placeholder="Legenda da foto (aparece no relatório)"
+              className="input flex-1"
+            />
+            <button className="btn btn-primary">Salvar</button>
+          </form>
         </div>
       )}
     </div>
