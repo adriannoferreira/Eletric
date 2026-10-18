@@ -1,4 +1,4 @@
-import type { Guia } from "./guias";
+import type { Guia } from "./tipos-guia";
 
 /**
  * Conteúdo das fichas de serviço. Tempos e materiais são típicos de obra
