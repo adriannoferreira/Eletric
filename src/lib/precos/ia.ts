@@ -48,7 +48,8 @@ const FERRAMENTA_REGISTRO: Anthropic.Beta.BetaTool = {
     "Registra o resultado final da pesquisa de preço. Chame exatamente uma vez, no final, depois de pesquisar.",
   strict: true,
   input_schema: (() => {
-    const { $schema: _, ...schema } = z.toJSONSchema(Resultado, { target: "draft-7" });
+    const schema: Record<string, unknown> = { ...z.toJSONSchema(Resultado, { target: "draft-7" }) };
+    delete schema.$schema;
     return schema as Anthropic.Beta.BetaTool.InputSchema;
   })(),
 };
