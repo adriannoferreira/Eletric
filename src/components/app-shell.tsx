@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { sair } from "@/app/login/actions";
-import { ativo, NAV_PRINCIPAL, NAV_SECUNDARIA } from "./nav";
+import { ativo, GRUPOS_NAV, NAV_PRINCIPAL, NAV_SECUNDARIA } from "./nav";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -22,20 +22,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <span className="text-lg font-bold tracking-tight">Eletric</span>
         </Link>
-        <nav className="flex flex-1 flex-col gap-1">
-          {[...NAV_PRINCIPAL, ...NAV_SECUNDARIA].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                ativo(pathname, item.href)
-                  ? "bg-accent-soft text-fg"
-                  : "text-muted hover:bg-surface-2 hover:text-fg"
-              }`}
-            >
-              <item.icone className="size-5" />
-              {item.rotulo}
-            </Link>
+        <nav className="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1">
+          {[{ titulo: "", itens: NAV_PRINCIPAL }, ...GRUPOS_NAV].map((g) => (
+            <div key={g.titulo || "principal"} className="mb-2">
+              {g.titulo && <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted/80">{g.titulo}</p>}
+              {g.itens.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                    ativo(pathname, item.href) ? "bg-accent-soft text-fg" : "text-muted hover:bg-surface-2 hover:text-fg"
+                  }`}
+                >
+                  <item.icone className="size-5" />
+                  {item.rotulo}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
         <form action={sair}>
@@ -96,17 +99,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <X className="size-5" />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {NAV_SECUNDARIA.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMaisAberto(false)}
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-surface-2 p-3 text-center text-xs font-medium"
-                >
-                  <item.icone className="size-6 text-accent" />
-                  {item.rotulo}
-                </Link>
+            <div className="space-y-3">
+              {GRUPOS_NAV.map((g) => (
+                <div key={g.titulo}>
+                  <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted">{g.titulo}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {g.itens.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMaisAberto(false)}
+                        className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center text-xs font-medium ${
+                          ativo(pathname, item.href) ? "bg-accent-soft" : "bg-surface-2"
+                        }`}
+                      >
+                        <item.icone className="size-5 text-accent" />
+                        {item.curto ?? item.rotulo}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             <form action={sair} className="mt-3">

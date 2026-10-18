@@ -37,7 +37,7 @@ export function EditorKits({ kits, catalogo }: { kits: KitComItens[]; catalogo: 
   return (
     <>
       <p className="mb-3 text-sm text-muted">
-        Um kit junta o serviço e os materiais que ele consome. No orçamento, “5 pontos de tomada” já traz todo o material com preço.
+        Serviço + materiais. No orçamento, “5 pontos de tomada” já traz tudo com preço.
       </p>
       <div className="mb-4 flex flex-wrap justify-end gap-2">
         {botaoSugeridos}
@@ -113,7 +113,17 @@ export function EditorKits({ kits, catalogo }: { kits: KitComItens[]; catalogo: 
   );
 }
 
-type Linha = { chave: string; catalogoId: number | null; tipo: "servico" | "material"; descricao: string; unidade: string; quantidade: string };
+type Linha = {
+  chave: string;
+  catalogoId: number | null;
+  tipo: "servico" | "material";
+  descricao: string;
+  unidade: string;
+  quantidade: string;
+  familia?: string | null;
+  atributos?: Record<string, string | number>;
+  variaveis?: Record<string, string | number>;
+};
 let seq = 0;
 
 function FormKit({ kit, catalogo, aoFechar }: { kit?: KitComItens; catalogo: ItemCat[]; aoFechar: () => void }) {
@@ -130,6 +140,9 @@ function FormKit({ kit, catalogo, aoFechar }: { kit?: KitComItens; catalogo: Ite
         descricao: i.descricao,
         unidade: i.unidade,
         quantidade: String(i.quantidade).replace(".", ","),
+        familia: i.familia,
+        atributos: i.atributos,
+        variaveis: i.variaveis,
       })) ?? [],
   );
   const [busca, setBusca] = useState("");
@@ -234,6 +247,9 @@ function FormKit({ kit, catalogo, aoFechar }: { kit?: KitComItens; catalogo: Ite
                   descricao: l.descricao,
                   unidade: l.unidade,
                   quantidade: Number(l.quantidade.replace(",", ".")) || 0,
+                  familia: l.familia ?? null,
+                  atributos: l.atributos ?? {},
+                  variaveis: l.variaveis ?? {},
                 })),
               });
               if (r) setErro(r);

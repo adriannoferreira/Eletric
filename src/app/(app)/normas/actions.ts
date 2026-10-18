@@ -11,6 +11,7 @@ import { lerQuadro } from "@/lib/eletrica/tipos";
 import type { CategoriaCarga } from "@/lib/normas/equatorial-pa";
 import { catalogoComPrecos } from "@/lib/precos/servidor";
 import { normalizar } from "@/lib/precos/regras";
+import { type Especificacao, especificacaoCompleta, inferirVariante, resolverVariante } from "@/lib/precos/variantes";
 import { NORMAS } from "@/lib/normas/equatorial-pa";
 
 /** Listas para a calculadora do padrão de entrada (importar quadro e escolher cliente). */
@@ -56,8 +57,26 @@ export async function gerarOrcamentoPadrao(clienteId: number, titulo: string, it
   const itens = z.array(Item).max(60).safeParse(itensBrutos);
   if (!itens.success || !Number.isInteger(clienteId) || clienteId <= 0) return "Escolha o cliente e confira os itens.";
   const cat = await catalogoComPrecos();
-  /** Exige todas as palavras (como palavras inteiras) e ignora itens sem preço. */
-  const preco = (tipo: string, busca: string[]) => {
+  /**
+   * Materiais com especificação técnica (disjuntor, cabo…) só usam o preço da variante
+   * exata; os demais exigem todas as palavras (como palavras inteiras) e ignoram itens sem preço.
+   */
+  const preco = (tipo: string, busca: string[], descricao: string) => {
+    const v = tipo === "material" ? inferirVariante(descricao) : null;
+    if (v) {
+      // Disjuntor do padrão sem curva informada: aceita curva C ou B (nessa ordem).
+      const tentativas: Especificacao[] =
+        v.familia === "disjuntor_din" && v.atributos.curva === undefined
+          ? (["C", "B"] as const).map((curva) => ({ ...v, atributos: { ...v.atributos, curva } }))
+          : [v];
+      if (tentativas.some(especificacaoCompleta)) {
+        for (const t of tentativas) {
+          const r = resolverVariante(cat, t);
+          if (r.status === "ok" && r.item.preco > 0) return r.item.preco;
+        }
+        return null;
+      }
+    }
     const termos = busca.map(normalizar).filter(Boolean);
     if (!termos.length) return null;
     const achado = cat
@@ -79,7 +98,7 @@ export async function gerarOrcamentoPadrao(clienteId: number, titulo: string, it
     .returning({ id: orcamentos.id });
   await db.insert(orcamentoItens).values(
     itens.data.map((i, ordem) => {
-      const p = preco(i.tipo, i.busca);
+      const p = preco(i.tipo, i.busca, i.descricao);
       return {
         orcamentoId: o.id,
         tipo: i.tipo,

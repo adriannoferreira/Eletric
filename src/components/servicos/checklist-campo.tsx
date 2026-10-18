@@ -1,13 +1,23 @@
 "use client";
 
-import { Check, Printer, RotateCcw } from "lucide-react";
+import { Check, ChevronDown, Printer, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /**
  * Checklist para usar em campo. O progresso fica salvo neste aparelho
  * (é uma lista de apoio; para registrar o serviço, crie uma OS).
  */
-export function ChecklistCampo({ id, titulo, grupos }: { id: string; titulo: string; grupos: { titulo: string; itens: string[] }[] }) {
+export function ChecklistCampo({
+  id,
+  titulo,
+  grupos,
+  aberto = false,
+}: {
+  id: string;
+  titulo: string;
+  grupos: { titulo: string; itens: string[] }[];
+  aberto?: boolean;
+}) {
   const chave = `checklist:${id}`;
   const [feitos, setFeitos] = useState<Record<string, boolean>>({});
 
@@ -32,10 +42,15 @@ export function ChecklistCampo({ id, titulo, grupos }: { id: string; titulo: str
   const ok = Object.values(feitos).filter(Boolean).length;
 
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-semibold">{titulo} <span className="text-sm font-normal text-muted">({ok}/{total})</span></h2>
-        <div className="no-print flex gap-1">
+    <details open={aberto} className="group card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 [&::-webkit-details-marker]:hidden">
+        <h2 className="font-semibold">
+          {titulo} <span className="text-sm font-normal text-muted">({ok}/{total})</span>
+        </h2>
+        <ChevronDown className="size-4 shrink-0 text-muted transition group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-4">
+      <div className="no-print mb-2 flex justify-end gap-1">
           <button onClick={() => window.print()} className="btn btn-ghost p-2" aria-label="Imprimir"><Printer className="size-4" /></button>
           <button
             onClick={() => {
@@ -49,7 +64,6 @@ export function ChecklistCampo({ id, titulo, grupos }: { id: string; titulo: str
           >
             <RotateCcw className="size-4" />
           </button>
-        </div>
       </div>
       <div className="space-y-4">
         {grupos.map((g) => (
@@ -73,7 +87,8 @@ export function ChecklistCampo({ id, titulo, grupos }: { id: string; titulo: str
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted">O progresso fica salvo só neste aparelho. Para registrar o serviço com fotos e assinatura, crie uma OS.</p>
-    </section>
+      <p className="mt-3 text-xs text-muted">Salvo só neste aparelho.</p>
+      </div>
+    </details>
   );
 }

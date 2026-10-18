@@ -1,5 +1,5 @@
-import { AlertTriangle, Calculator, Plus } from "lucide-react";
-import Link from "next/link";
+import { Calculator, ChevronDown, Plus, ShieldAlert } from "lucide-react";
+import { Conferir, MenuAcoes } from "@/components/divulgacao";
 import { DiagramaBomba, DiagramaForca, DiagramaPartidaDireta, DiagramaTimer } from "@/components/servicos/diagramas-comando";
 import { Cabecalho } from "@/components/ui";
 
@@ -10,7 +10,12 @@ function Bloco({ titulo, children, texto }: { titulo: string; children: React.Re
     <section className="card space-y-3 p-4 break-inside-avoid">
       <h2 className="font-semibold">{titulo}</h2>
       {children}
-      <ul className="list-disc space-y-1 pl-5 text-sm">{texto.map((t) => <li key={t}>{t}</li>)}</ul>
+      <details className="group">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-muted hover:text-fg [&::-webkit-details-marker]:hidden">
+          Como funciona <ChevronDown className="size-4 transition group-open:rotate-180" />
+        </summary>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{texto.map((t) => <li key={t}>{t}</li>)}</ul>
+      </details>
     </section>
   );
 }
@@ -18,13 +23,23 @@ function Bloco({ titulo, children, texto }: { titulo: string; children: React.Re
 export default function ComandosPage() {
   return (
     <>
-      <Cabecalho titulo="Bombas e comandos" subtitulo="Diagramas de comando prontos para consultar na obra" voltar="/servicos" />
-      <div className="mb-4 flex gap-3 rounded-2xl bg-info-soft p-4 text-sm text-info">
-        <AlertTriangle className="size-5 shrink-0" />
-        <p>
-          Diagramas de referência. Confira sempre o esquema do fabricante do contator, relé, boias e timer (numeração de bornes
-          pode variar). Bloqueie o comando antes de mexer: com o automático ligado, o motor pode partir sozinho (NR-10).
-        </p>
+      <Cabecalho
+        titulo="Bombas e comandos"
+        voltar="/servicos"
+        acoes={
+          <MenuAcoes
+            acoes={[
+              { rotulo: "Calcular motor", icone: <Calculator />, href: "/calculadoras" },
+              { rotulo: "Criar OS", icone: <Plus />, href: "/os/nova?guia=bombas-agua" },
+            ]}
+          />
+        }
+      />
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+        <span className="flex items-center gap-2">
+          <ShieldAlert className="size-4 shrink-0 text-warn" /> Bloqueie o comando antes de mexer (NR-10).
+        </span>
+        <Conferir itens={["Esquema do fabricante do contator, relé, boias e timer — a numeração de bornes pode variar.", "Com o automático ligado, o motor pode partir sozinho."]} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloco
@@ -68,10 +83,6 @@ export default function ComandosPage() {
         >
           <DiagramaTimer />
         </Bloco>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <Link href="/calculadoras" className="btn btn-secondary"><Calculator className="size-4" /> Calcular motor</Link>
-        <Link href="/os/nova?guia=bombas-agua" className="btn btn-primary"><Plus className="size-4" /> Criar OS</Link>
       </div>
     </>
   );

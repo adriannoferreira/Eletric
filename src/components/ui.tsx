@@ -1,16 +1,20 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { Ajuda } from "./divulgacao";
 
 export function Cabecalho({
   titulo,
   subtitulo,
   voltar,
   acoes,
+  ajuda,
 }: {
   titulo: string;
   subtitulo?: string;
   voltar?: string;
   acoes?: React.ReactNode;
+  /** Explicação da tela, aberta pelo botão (?) ao lado do título. */
+  ajuda?: React.ReactNode;
 }) {
   return (
     <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
@@ -21,8 +25,11 @@ export function Cabecalho({
           </Link>
         )}
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold tracking-tight">{titulo}</h1>
-          {subtitulo && <p className="mt-0.5 text-sm text-muted">{subtitulo}</p>}
+          <div className="flex items-center gap-1">
+            <h1 className="truncate text-2xl font-bold tracking-tight">{titulo}</h1>
+            {ajuda && <Ajuda titulo={titulo}>{ajuda}</Ajuda>}
+          </div>
+          {subtitulo && <p className="mt-0.5 truncate text-sm text-muted">{subtitulo}</p>}
         </div>
       </div>
       {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}

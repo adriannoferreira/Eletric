@@ -203,6 +203,9 @@ const Kit = z.object({
         descricao: z.string().trim().min(1).max(300),
         unidade: z.string().trim().max(20),
         quantidade: z.number().positive("Quantidade deve ser maior que zero"),
+        familia: z.string().max(40).nullable().optional(),
+        atributos: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+        variaveis: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
       }),
     )
     .min(1, "Adicione ao menos um item ao kit")
@@ -217,7 +220,16 @@ export async function salvarKit(dados: z.input<typeof Kit>) {
   if (kitId) await db.update(kits).set({ ...kit, categoria: kit.categoria || "Geral" }).where(eq(kits.id, kitId));
   else [{ id: kitId }] = await db.insert(kits).values({ ...kit, categoria: kit.categoria || "Geral" }).returning({ id: kits.id });
   await db.delete(kitItens).where(eq(kitItens.kitId, kitId!));
-  await db.insert(kitItens).values(itens.map((i, ordem) => ({ ...i, kitId: kitId!, ordem })));
+  await db.insert(kitItens).values(
+    itens.map((i, ordem) => ({
+      ...i,
+      familia: ehFamilia(i.familia) ? i.familia : null,
+      atributos: i.atributos ?? {},
+      variaveis: i.variaveis ?? {},
+      kitId: kitId!,
+      ordem,
+    })),
+  );
   revalidar();
   return null;
 }

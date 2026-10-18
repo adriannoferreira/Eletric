@@ -1,5 +1,5 @@
 import { Calculator, Plus, ShieldAlert } from "lucide-react";
-import Link from "next/link";
+import { Ajuda, Conferir, MenuAcoes, Ref } from "@/components/divulgacao";
 import { ChecklistCampo } from "@/components/servicos/checklist-campo";
 import { Cabecalho } from "@/components/ui";
 
@@ -8,15 +8,31 @@ export const metadata = { title: "Energia solar" };
 export default function SolarPage() {
   return (
     <>
-      <Cabecalho titulo="Energia solar fotovoltaica" subtitulo="Visita técnica e manutenção" voltar="/servicos" />
-      <div className="mb-4 flex gap-3 rounded-2xl bg-warn-soft p-4 text-sm text-warn">
-        <ShieldAlert className="size-5 shrink-0" />
-        <p>
-          <strong>Exige responsável técnico.</strong> Projeto, ART/TRT e homologação na Equatorial são feitos por profissional
-          habilitado. Módulos geram tensão contínua alta sempre que há luz: não existe “desligar o painel”. Siga NR-10 e NR-35.
-        </p>
+      <Cabecalho
+        titulo="Energia solar"
+        voltar="/servicos"
+        acoes={
+          <MenuAcoes
+            acoes={[
+              { rotulo: "Estimar sistema", icone: <Calculator />, href: "/calculadoras" },
+              { rotulo: "Criar OS", icone: <Plus />, href: "/os/nova?guia=solar" },
+            ]}
+          />
+        }
+      />
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+        <span className="flex items-center gap-1 font-medium text-warn">
+          <ShieldAlert className="size-4 shrink-0" /> Exige responsável técnico
+          <Ajuda titulo="Responsável técnico">
+            <p>Projeto, ART/TRT e homologação na Equatorial são feitos por profissional habilitado.</p>
+            <p>Módulos geram tensão contínua alta sempre que há luz: não existe “desligar o painel”. Siga NR-10 e NR-35.</p>
+          </Ajuda>
+        </span>
+        <Ref norma="NBR 16690" />
+        <Ref norma="NBR 16274" />
+        <Conferir itens={["Edições vigentes da NBR 16690 (instalações FV) e NBR 16274 (comissionamento)."]} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-2 lg:grid-cols-2">
         <ChecklistCampo
           id="solar-visita"
           titulo="Visita técnica (pré-venda)"
@@ -74,11 +90,6 @@ export default function SolarPage() {
           ]}
         />
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <Link href="/calculadoras" className="btn btn-secondary"><Calculator className="size-4" /> Estimar sistema</Link>
-        <Link href="/os/nova?guia=solar" className="btn btn-primary"><Plus className="size-4" /> Criar OS</Link>
-      </div>
-      <p className="mt-3 text-xs text-muted">Normas de referência: ABNT NBR 16690 (instalações FV) e NBR 16274 (comissionamento) — conferir edições vigentes.</p>
     </>
   );
 }

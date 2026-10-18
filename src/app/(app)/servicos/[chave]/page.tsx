@@ -1,23 +1,10 @@
 import { and, eq, gt, ilike, inArray, or } from "drizzle-orm";
-import {
-  AlertTriangle,
-  BookOpen,
-  Bot,
-  ClipboardCheck,
-  Clock,
-  HardHat,
-  Lightbulb,
-  ListOrdered,
-  Megaphone,
-  Package,
-  Plus,
-  ShieldAlert,
-  Wrench,
-} from "lucide-react";
+import { BookOpen, Bot, ClipboardCheck, HardHat, ListOrdered, Megaphone, Package, Plus, ShieldAlert, Tag, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PerguntarIA } from "@/components/servicos/perguntar-ia";
-import { Badge, Cabecalho } from "@/components/ui";
+import { Ajuda, Conferir, Detalhes, MenuAcoes, Ref } from "@/components/divulgacao";
+import { Cabecalho } from "@/components/ui";
 import { catalogo, db, kits } from "@/db";
 import { reais } from "@/lib/formato";
 import { guiaPorChave } from "@/lib/servicos/guias";
@@ -45,94 +32,123 @@ export default async function GuiaPage({ params }: PageProps<"/servicos/[chave]"
 
   return (
     <>
-      <Cabecalho titulo={g.nome} subtitulo={g.resumo} voltar="/servicos" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Badge>{g.categoria}</Badge>
-        <Badge tom="info"><Clock className="mr-1 size-3" />{g.tempoHoras[0]}–{g.tempoHoras[1]} h de serviço</Badge>
+      <Cabecalho
+        titulo={g.nome}
+        subtitulo={`${g.categoria} · ${g.tempoHoras[0]}–${g.tempoHoras[1]} h`}
+        voltar="/servicos"
+        ajuda={<p>{g.resumo}</p>}
+        acoes={
+          <MenuAcoes
+            acoes={[
+              { rotulo: "Perguntar à IA", icone: <Bot />, href: "#ia" },
+              { rotulo: "Kits no catálogo", icone: <Package />, href: "/catalogo/kits" },
+            ]}
+          />
+        }
+      />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {g.exigeResponsavel && (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-warn">
+            <ShieldAlert className="size-4" /> Exige responsável técnico
+            <Ajuda titulo="Responsável técnico">{g.exigeResponsavel}</Ajuda>
+          </span>
+        )}
+        {g.normas.slice(0, 3).map((n) => (
+          <Ref key={n} norma={n} />
+        ))}
+        {g.conferir?.length ? <Conferir itens={g.conferir} /> : null}
       </div>
 
-      {g.exigeResponsavel && (
-        <div className="mb-4 flex gap-3 rounded-2xl bg-warn-soft p-4 text-sm text-warn">
-          <ShieldAlert className="size-5 shrink-0" />
-          <p><strong>Exige responsável técnico.</strong> {g.exigeResponsavel}</p>
-        </div>
+      {g.seguranca[0] && (
+        <p className="mb-4 flex items-start gap-2 text-sm">
+          <HardHat className="mt-0.5 size-4 shrink-0 text-warn" /> {g.seguranca[0]}
+        </p>
       )}
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
-        <Link href={`/os/nova?guia=${g.chave}`} className="btn btn-primary"><Plus className="size-4" /> Criar OS</Link>
-        <a href="#ia" className="btn btn-secondary"><Bot className="size-4" /> Perguntar à IA</a>
-      </div>
+      <Link href={`/os/nova?guia=${g.chave}`} className="btn btn-primary mb-4 w-full sm:w-auto">
+        <Plus className="size-4" /> Criar OS
+      </Link>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Bloco t="Quando oferecer" i={Lightbulb} itens={g.quandoOferecer} />
-        <Bloco t="Passo a passo" i={ListOrdered} itens={g.passos} numerado />
-        <section className="card p-4">
-          <h2 className="mb-2 flex items-center gap-2 font-semibold"><Package className="size-4 text-accent" /> Materiais típicos</h2>
-          {g.materiais.length ? (
-            <ul className="list-disc space-y-1 pl-5 text-sm">{g.materiais.map((m) => <li key={m}>{m}</li>)}</ul>
-          ) : (
-            <p className="text-sm text-muted">Conforme o que for encontrado.</p>
-          )}
+      <div className="space-y-2">
+        <Detalhes titulo={<Titulo i={ListOrdered} t="Passo a passo" />} aberto>
+          <Lista itens={g.passos} numerado />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={Package} t="Materiais" />}>
+          {g.materiais.length ? <Lista itens={g.materiais} /> : <p className="text-sm text-muted">Conforme o que for encontrado.</p>}
           {kitsDb.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {kitsDb.map((k) => (
-                <Link key={k.id} href="/catalogo" className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium">Kit: {k.nome}</Link>
+                <Link key={k.id} href="/catalogo/kits" className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium">
+                  Kit: {k.nome}
+                </Link>
               ))}
             </div>
           )}
-          {g.kits?.length && kitsDb.length === 0 ? (
-            <p className="mt-2 text-xs text-muted">Carregue os kits sugeridos no Catálogo para ligar este serviço aos materiais com preço.</p>
-          ) : null}
-        </section>
-        <Bloco t="Ferramentas e EPIs" i={Wrench} itens={g.ferramentas} />
-        <Bloco t="Normas aplicáveis" i={BookOpen} itens={g.normas.length ? g.normas : ["—"]} />
-        <Bloco t="Segurança (NR-10)" i={HardHat} itens={g.seguranca.length ? g.seguranca : ["Seguir procedimentos da NR-10"]} />
-        <Bloco t="Checklist de entrega (vai para a OS)" i={ClipboardCheck} itens={g.checklistEntrega} />
-        <Bloco t="Como vender / o que falar" i={Megaphone} itens={g.argumentosVenda} />
-      </div>
-
-      {g.conferir?.length ? (
-        <div className="mt-4 flex gap-3 rounded-2xl bg-info-soft p-4 text-sm text-info">
-          <AlertTriangle className="size-5 shrink-0" />
-          <div>
-            <p className="font-semibold">Conferir na norma vigente</p>
-            <ul className="list-disc pl-5">{g.conferir.map((c) => <li key={c}>{c}</li>)}</ul>
-          </div>
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={Wrench} t="Ferramentas e EPIs" />}>
+          <Lista itens={g.ferramentas} />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={HardHat} t="Segurança (NR-10)" />}>
+          <Lista itens={g.seguranca.length ? g.seguranca : ["Seguir procedimentos da NR-10"]} />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={ClipboardCheck} t="Checklist de entrega" />}>
+          <Lista itens={g.checklistEntrega} />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={Megaphone} t="Como vender" />}>
+          <Lista itens={g.argumentosVenda} />
+          <p className="mb-1 mt-3 text-sm font-semibold">Quando oferecer</p>
+          <Lista itens={g.quandoOferecer} />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={BookOpen} t="Normas" />}>
+          <Lista itens={g.normas.length ? g.normas : ["—"]} />
+        </Detalhes>
+        <Detalhes titulo={<Titulo i={Tag} t="Seus preços" />}>
+          {servicosCat.length ? (
+            <ul className="divide-y divide-border text-sm">
+              {servicosCat.map((s) => (
+                <li key={s.nome} className="flex justify-between gap-3 py-2">
+                  <span>{s.nome}</span>
+                  <span className="font-semibold">
+                    {reais(s.preco)}/{s.unidade}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">
+              Sem preço no <Link href="/catalogo" className="text-info underline">catálogo</Link>.
+            </p>
+          )}
+        </Detalhes>
+        <div id="ia" className="scroll-mt-4">
+          <Detalhes titulo={<Titulo i={Bot} t="Perguntar à IA" />}>
+            <PerguntarIA
+              contexto={contexto}
+              sugestoes={["Quais erros mais comuns neste serviço?", "Como calcular o material?", "Como explicar o preço ao cliente?"]}
+            />
+          </Detalhes>
         </div>
-      ) : null}
-
-      <section className="card mt-4 p-4">
-        <h2 className="mb-2 font-semibold">Seus preços no catálogo</h2>
-        {servicosCat.length ? (
-          <ul className="divide-y divide-border text-sm">
-            {servicosCat.map((s) => (
-              <li key={s.nome} className="flex justify-between gap-3 py-2"><span>{s.nome}</span><span className="font-semibold">{reais(s.preco)}/{s.unidade}</span></li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted">Nenhum serviço parecido com preço no seu <Link href="/catalogo" className="text-info underline">catálogo</Link>.</p>
-        )}
-      </section>
-
-      <section id="ia" className="card mt-4 scroll-mt-4 p-4">
-        <h2 className="mb-3 flex items-center gap-2 font-semibold"><Bot className="size-4 text-accent" /> Perguntar à IA sobre este serviço</h2>
-        <PerguntarIA
-          contexto={contexto}
-          sugestoes={["Quais erros mais comuns neste serviço?", "Como calcular o material?", "Como explicar o preço ao cliente?"]}
-        />
-      </section>
+      </div>
     </>
   );
 }
 
-function Bloco({ t, i: I, itens, numerado }: { t: string; i: React.ComponentType<{ className?: string }>; itens: string[]; numerado?: boolean }) {
+function Titulo({ t, i: I }: { t: string; i: React.ComponentType<{ className?: string }> }) {
+  return (
+    <span className="flex items-center gap-2">
+      <I className="size-4 text-accent" /> {t}
+    </span>
+  );
+}
+
+function Lista({ itens, numerado }: { itens: string[]; numerado?: boolean }) {
   const L = numerado ? "ol" : "ul";
   return (
-    <section className="card p-4">
-      <h2 className="mb-2 flex items-center gap-2 font-semibold"><I className="size-4 text-accent" /> {t}</h2>
-      <L className={`${numerado ? "list-decimal" : "list-disc"} space-y-1 pl-5 text-sm`}>
-        {itens.map((x) => <li key={x}>{x}</li>)}
-      </L>
-    </section>
+    <L className={`${numerado ? "list-decimal" : "list-disc"} space-y-1 pl-5 text-sm`}>
+      {itens.map((x) => (
+        <li key={x}>{x}</li>
+      ))}
+    </L>
   );
 }

@@ -1,13 +1,15 @@
 "use client";
 
-import { Bot, Check, ExternalLink, History, Link2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ExternalLink, History, Layers, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { SeloPreco } from "@/components/precos/selo-preco";
+import { AvisoVariante, CriarVariantes, EditorAtributos } from "@/components/precos/variantes";
 import { Sk } from "@/components/skeleton";
 import { Campo } from "@/components/ui";
 import type { ItemCatalogo, PrecoHistorico, SinapiItem, SugestaoPreco } from "@/db";
 import { dataCurta, reais } from "@/lib/formato";
 import { desatualizado, normalizar, precoServico, ROTULO_FONTE } from "@/lib/precos/regras";
+import { type Especificacao, especificacaoCompleta, especificacaoDoItem, FAMILIAS } from "@/lib/precos/variantes";
 import {
   associarSinapi,
   buscarSinapi,
@@ -20,7 +22,7 @@ import {
 
 export type ItemComPreco = ItemCatalogo & { precoSalvo: number; calculado: boolean };
 
-type Filtro = "todos" | "servico" | "material" | "velhos" | "sem";
+type Filtro = "todos" | "servico" | "material" | "velhos" | "sem" | "variantes";
 
 const FILTROS: { v: Filtro; r: string }[] = [
   { v: "todos", r: "Todos" },
@@ -28,7 +30,15 @@ const FILTROS: { v: Filtro; r: string }[] = [
   { v: "material", r: "Materiais" },
   { v: "velhos", r: "Desatualizados" },
   { v: "sem", r: "Sem preço" },
+  { v: "variantes", r: "Sem variante" },
 ];
+
+/** Especificação do material (gravada ou inferida pelo nome); null para serviços e itens simples. */
+export function varianteItem(i: ItemCatalogo): Especificacao | null {
+  if (i.tipo !== "material") return null;
+  const e = especificacaoDoItem({ ...i, atributos: i.atributos });
+  return e ? { familia: e.familia, atributos: e.atributos } : null;
+}
 
 type Contexto = {
   validadeDias: number;
@@ -41,10 +51,16 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
   const [editando, setEditando] = useState<ItemComPreco | "novo" | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
+  const [criarVariantes, setCriarVariantes] = useState(false);
+  const [menu, setMenu] = useState(false);
 
   const velho = (i: ItemComPreco) => !i.calculado && desatualizado(i.precoAtualizadoEm, ctx.validadeDias);
   const semPreco = (i: ItemComPreco) => i.preco <= 0;
-  const contagem = { velhos: itens.filter(velho).length, sem: itens.filter(semPreco).length };
+  const semVariante = (i: ItemComPreco) => {
+    const v = varianteItem(i);
+    return !!v && !especificacaoCompleta(v);
+  };
+  const contagem = { velhos: itens.filter(velho).length, sem: itens.filter(semPreco).length, variantes: itens.filter(semVariante).length };
 
   const q = normalizar(busca);
   const visiveis = itens.filter((i) => {
@@ -52,10 +68,16 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
     if (filtro === "servico" || filtro === "material") return i.tipo === filtro;
     if (filtro === "velhos") return velho(i);
     if (filtro === "sem") return semPreco(i);
+    if (filtro === "variantes") return semVariante(i);
     return true;
   });
+  // Materiais com família são agrupados por família (as variantes ficam juntas); o resto, por categoria.
   const porCategoria = new Map<string, ItemComPreco[]>();
-  for (const i of visiveis) porCategoria.set(i.categoria, [...(porCategoria.get(i.categoria) ?? []), i]);
+  for (const i of visiveis) {
+    const v = varianteItem(i);
+    const grupo = v ? FAMILIAS[v.familia].nome : i.categoria;
+    porCategoria.set(grupo, [...(porCategoria.get(grupo) ?? []), i]);
+  }
 
   return (
     <>
@@ -73,10 +95,29 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
         <button onClick={() => setEditando("novo")} className="btn btn-primary shrink-0">
           <Plus className="size-4" /> <span className="hidden sm:inline">Novo item</span>
         </button>
+        <div className="relative">
+          <button onClick={() => setMenu((m) => !m)} className="btn btn-secondary px-3" aria-label="Mais ações">
+            <MoreHorizontal className="size-4" />
+          </button>
+          {menu && (
+            <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+              <button
+                onClick={() => {
+                  setMenu(false);
+                  setCriarVariantes(true);
+                }}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-surface-2"
+              >
+                <Layers className="size-4" /> Criar variantes
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0">
         {FILTROS.map((f) => {
-          const n = f.v === "velhos" ? contagem.velhos : f.v === "sem" ? contagem.sem : null;
+          const n = f.v === "velhos" ? contagem.velhos : f.v === "sem" ? contagem.sem : f.v === "variantes" ? contagem.variantes : null;
+          if (f.v === "variantes" && !n) return null;
           return (
             <button
               key={f.v}
@@ -110,12 +151,16 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
                         <span>
                           {i.tipo === "servico" ? "Serviço" : "Material"} · por {i.unidade}
                         </span>
-                        <SeloPreco
-                          fonte={i.calculado ? "calculado" : i.fontePreco}
-                          data={i.precoAtualizadoEm}
-                          validadeDias={ctx.validadeDias}
-                          semPreco={i.preco <= 0}
-                        />
+                        {semVariante(i) ? (
+                          <AvisoVariante e={varianteItem(i)!} />
+                        ) : (
+                          <SeloPreco
+                            fonte={i.calculado ? "calculado" : i.fontePreco}
+                            data={i.precoAtualizadoEm}
+                            validadeDias={ctx.validadeDias}
+                            semPreco={i.preco <= 0}
+                          />
+                        )}
                       </div>
                     </div>
                     <span className="shrink-0 text-right">
@@ -135,6 +180,7 @@ export function EditorCatalogo({ itens, ...ctx }: { itens: ItemComPreco[] } & Co
         ))}
       </div>
 
+      {criarVariantes && <CriarVariantes aoFechar={() => setCriarVariantes(false)} />}
       {editando && (
         <FormItem
           key={editando === "novo" ? "novo" : editando.id}
@@ -316,6 +362,7 @@ function FormItem({ item, ctx, aoFechar }: { item?: ItemComPreco; ctx: Contexto;
 
         {item && (
           <div className="mt-5 space-y-3 border-t border-border pt-4">
+            {item.tipo === "material" && <EditorAtributos id={item.id} inicial={varianteItem(item)} />}
             <PesquisaIA item={item} />
             <SinapiItem item={item} />
             <Historico id={item.id} />
@@ -327,11 +374,15 @@ function FormItem({ item, ctx, aoFechar }: { item?: ItemComPreco; ctx: Contexto;
 }
 
 /** Pesquisa o preço na web com IA e mostra a sugestão para aprovar. */
-export function PesquisaIA({ item }: { item: Pick<ItemCatalogo, "id" | "tipo" | "precoFixo"> }) {
+export function PesquisaIA({ item }: { item: Pick<ItemCatalogo, "id" | "tipo" | "precoFixo" | "nome" | "familia" | "atributos"> }) {
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
   const [sug, setSug] = useState<SugestaoPreco | null>(null);
   const [feito, setFeito] = useState<string | null>(null);
+  const v = item.tipo === "material" ? especificacaoDoItem({ ...item, unidade: "", preco: 0 }) : null;
+  if (v && !especificacaoCompleta(v)) {
+    return <p className="text-xs text-warn">Defina a especificação acima para pesquisar o preço desta variante.</p>;
+  }
 
   return (
     <div className="space-y-2">
@@ -401,10 +452,10 @@ export function CartaoSugestao({
           </div>
         ))}
       </div>
-      {s.observacao && <p className="text-xs text-muted">{s.observacao}</p>}
+      {s.especificacao && <p className="text-xs font-medium">Pesquisado: {s.especificacao}</p>}
       {s.fontesWeb.length > 0 && (
         <ul className="space-y-1 text-xs">
-          {s.fontesWeb.map((f, i) => (
+          {s.fontesWeb.slice(0, 4).map((f, i) => (
             <li key={i} className="flex items-center gap-1.5">
               <ExternalLink className="size-3 shrink-0 text-muted" />
               <a href={f.url} target="_blank" rel="noopener noreferrer" className="truncate text-info underline">
@@ -414,6 +465,33 @@ export function CartaoSugestao({
             </li>
           ))}
         </ul>
+      )}
+      {(s.observacao || s.ofertas.some((o) => !o.confere) || s.fontesWeb.length > 4) && (
+        <details className="text-xs">
+          <summary className="flex cursor-pointer list-none items-center gap-1 text-muted">
+            <ChevronDown className="size-3" /> Detalhes da pesquisa
+          </summary>
+          <div className="mt-2 space-y-2">
+            {s.observacao && <p className="text-muted">{s.observacao}</p>}
+            {s.fontesWeb.slice(4).map((f, i) => (
+              <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="block truncate text-info underline">
+                {f.loja || f.url} {f.preco != null && `· ${reais(f.preco)}`}
+              </a>
+            ))}
+            {s.ofertas.some((o) => !o.confere) && (
+              <div>
+                <p className="font-semibold text-danger">Não conferem (ignoradas)</p>
+                {s.ofertas
+                  .filter((o) => !o.confere)
+                  .map((o, i) => (
+                    <a key={i} href={o.url} target="_blank" rel="noopener noreferrer" className="block truncate text-muted line-through">
+                      {o.loja} {o.preco != null && `· ${reais(o.preco)}/${o.unidade || "un"}`} — {o.divergencias.join(", ")}
+                    </a>
+                  ))}
+              </div>
+            )}
+          </div>
+        </details>
       )}
       {servicoCalculado ? (
         <p className="text-xs text-muted">

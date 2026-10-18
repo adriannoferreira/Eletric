@@ -20,9 +20,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge, Campo } from "@/components/ui";
 import type { Cliente, ItemCatalogo, Kit, KitItem, Orcamento, OrcamentoItem } from "@/db";
+import { criarVariantesAcao } from "@/app/(app)/catalogo/actions";
+import { rotuloAtributo } from "@/components/precos/variantes";
 import { custoKit, expandirKit } from "@/lib/precos/kits";
+import { type Atributos, ehFamilia, FAMILIAS, type Familia, GRADES } from "@/lib/precos/variantes";
 import { linkWhatsApp, reais } from "@/lib/formato";
 import { STATUS_ORCAMENTO } from "@/lib/opcoes";
 import { numeroOrcamento, totais } from "@/lib/orcamento";
@@ -494,12 +498,17 @@ function SeletorKit({
   const [busca, setBusca] = useState("");
   const [sel, setSel] = useState<number | null>(null);
   const [qtd, setQtd] = useState("1");
+  const [escolhas, setEscolhas] = useState<Record<number, Atributos>>({});
+  const [criando, iniciarCriacao] = useTransition();
+  const router = useRouter();
   const precos = useMemo(() => new Map(catalogo.map((c) => [c.id, c])), [catalogo]);
   const normal = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   const lista = kits.filter((k) => normal(`${k.nome} ${k.categoria}`).includes(normal(busca)));
   const kit = kits.find((k) => k.id === sel);
   const quantidade = lerNumero(qtd);
-  const previa = kit && quantidade > 0 ? expandirKit(kit, quantidade, precos) : [];
+  const previa = kit && quantidade > 0 ? expandirKit(kit, quantidade, precos, undefined, escolhas) : [];
+  const parametricos = kit ? kit.itens.filter((i) => ehFamilia(i.familia) && Object.keys(i.variaveis ?? {}).length > 0) : [];
+  const faltantes = previa.filter((i) => i.varianteFaltando);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" onClick={aoFechar}>
@@ -550,6 +559,36 @@ function SeletorKit({
               Quantidade ({kit.unidade})
               <input value={qtd} onChange={(e) => setQtd(e.target.value)} inputMode="decimal" autoFocus className="input mt-1" />
             </label>
+            {parametricos.map((i) => {
+              const fam = i.familia as Familia;
+              return (
+                <div key={i.id} className="grid grid-cols-2 gap-2">
+                  {Object.entries(i.variaveis ?? {}).map(([k, sugerido]) => {
+                    const valor = escolhas[i.id]?.[k] ?? sugerido;
+                    const opcoes = GRADES[fam]?.[k] ?? [sugerido];
+                    return (
+                      <label key={k} className="text-xs text-muted">
+                        {FAMILIAS[fam].nome} · {rotuloAtributo(k).toLowerCase()}
+                        <select
+                          value={String(valor)}
+                          onChange={(e) => {
+                            const v = opcoes.find((o) => String(o) === e.target.value) ?? e.target.value;
+                            setEscolhas((x) => ({ ...x, [i.id]: { ...x[i.id], [k]: v } }));
+                          }}
+                          className="input mt-1 px-2.5 py-1.5"
+                        >
+                          {opcoes.map((o) => (
+                            <option key={String(o)} value={String(o)}>
+                              {String(o).replace(".", ",")}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            })}
             <ul className="space-y-1 text-sm">
               {previa.map((i, n) => (
                 <li key={n} className="flex justify-between gap-2">
@@ -560,8 +599,23 @@ function SeletorKit({
                 </li>
               ))}
             </ul>
+            {faltantes.length > 0 && (
+              <button
+                type="button"
+                disabled={criando}
+                onClick={() =>
+                  iniciarCriacao(async () => {
+                    for (const f of faltantes) await criarVariantesAcao(f.varianteFaltando!.familia, [f.varianteFaltando!.atributos]);
+                    router.refresh();
+                  })
+                }
+                className="btn btn-secondary w-full text-xs"
+              >
+                {criando ? "Criando…" : `Criar ${faltantes.length} variante(s) no catálogo`}
+              </button>
+            )}
             {previa.some((i) => i.precoUnitario <= 0) && (
-              <p className="text-xs text-danger">Itens em vermelho estão sem preço no catálogo — preencha depois no orçamento.</p>
+              <p className="text-xs text-danger">Em vermelho: sem preço no catálogo.</p>
             )}
             <button
               disabled={!previa.length}

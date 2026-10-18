@@ -43,10 +43,7 @@ export function LoteIA({ desatualizados, iaLigada }: { desatualizados: number; i
       <h2 className="flex items-center gap-2 font-semibold">
         <Bot className="size-4" /> Pesquisar preços desatualizados com IA
       </h2>
-      <p className="text-sm text-muted">
-        {desatualizados} item(ns) sem preço ou com preço vencido. Cada clique pesquisa até 8 itens nas lojas de Belém e região
-        (alguns centavos de IA por item) e cria sugestões para você aprovar.
-      </p>
+      <p className="text-sm text-muted">{desatualizados} item(ns) a atualizar · até 8 por vez</p>
       <button
         disabled={pendente || !iaLigada || desatualizados === 0}
         onClick={() =>
@@ -81,9 +78,7 @@ export function ReaplicarSinapi() {
       <h2 className="flex items-center gap-2 font-semibold">
         <RefreshCw className="size-4" /> Reaplicar SINAPI nos itens associados
       </h2>
-      <p className="text-sm text-muted">
-        Depois de importar a tabela do mês, atualiza todos os materiais que têm código SINAPI (com a margem atual).
-      </p>
+
       <button
         disabled={pendente}
         onClick={() =>

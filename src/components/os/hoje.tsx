@@ -41,9 +41,7 @@ export async function CardHoje() {
           <Link href="/agenda" className="text-sm text-muted hover:text-fg">Agenda</Link>
         </div>
         {ativas.length === 0 ? (
-          <p className="text-sm text-muted">
-            Nenhum serviço agendado para hoje. <Link href="/os/nova" className="text-info underline">Agendar</Link>
-          </p>
+          <p className="text-sm text-muted">Nada agendado.</p>
         ) : (
           <ul className="divide-y divide-border">
             {ativas.map((v) => (
@@ -67,7 +65,7 @@ export async function CardHoje() {
         <Link href="/os" className="flex items-center gap-3 rounded-2xl bg-danger-soft p-4 text-danger">
           <AlertTriangle className="size-5 shrink-0" />
           <span className="flex-1 text-sm font-medium">
-            {atrasadas.length} OS com visita vencida e não concluída: {atrasadas.map((a) => a.titulo).join(", ")}
+            {atrasadas.length} OS atrasada(s)
           </span>
           <ChevronRight className="size-4" />
         </Link>

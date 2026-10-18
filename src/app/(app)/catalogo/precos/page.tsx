@@ -16,33 +16,28 @@ export default async function AtualizarPrecosPage() {
   ]);
   return (
     <div className="space-y-6">
-      <section className="card space-y-1 p-4 text-sm">
-        <p className="font-semibold">Como o app escolhe o preço</p>
-        <ol className="list-decimal space-y-0.5 pl-5 text-muted">
-          <li>
-            <strong className="text-fg">Sua cotação</strong> de até {config.validadeDias} dias (aba Cotações)
-          </li>
-          <li>
-            <strong className="text-fg">Pesquisa com IA</strong> de até {config.validadeDias} dias, aprovada por você
-          </li>
-          <li>
-            <strong className="text-fg">SINAPI</strong> + margem de varejo de {String(config.margemSinapi).replace(".", ",")}%
-          </li>
-          <li>
-            <strong className="text-fg">Preço manual</strong>
-          </li>
-        </ol>
-        <p className="pt-1 text-xs text-muted">
-          Serviços com “calcular pelo tempo” usam horas × seu valor/hora. Todo mês, nos dias 1 a 5, o app pesquisa sozinho os
-          itens desatualizados e deixa as sugestões aqui para você aprovar.
-        </p>
-      </section>
-
       <Sugestoes pendentes={pendentes.map((p) => ({ sugestao: p.s, nome: p.item.nome, unidade: p.item.unidade, precoAtual: p.item.preco, servicoCalculado: p.item.tipo === "servico" && !p.item.precoFixo }))} />
       <LoteIA desatualizados={velhos.length} iaLigada={iaConfigurada()} />
-      <ImportarSinapi uf={config.uf} referencia={config.referenciaSinapi} totalImportado={nSinapi} />
-      <ReaplicarSinapi />
-      <ConfigPrecosForm config={config} />
+      <details className="card p-4 text-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between font-semibold">
+          Como o app escolhe o preço <span className="grid size-5 place-items-center rounded-full border border-border text-xs text-muted">?</span>
+        </summary>
+        <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-muted">
+          <li>Sua cotação (até {config.validadeDias} dias)</li>
+          <li>Pesquisa com IA aprovada (até {config.validadeDias} dias)</li>
+          <li>SINAPI + {String(config.margemSinapi).replace(".", ",")}%</li>
+          <li>Preço manual</li>
+        </ol>
+        <p className="mt-1 text-xs text-muted">Cada variante (corrente, seção…) tem preço próprio. Pesquisa automática nos dias 1 a 5 de cada mês.</p>
+      </details>
+      <details className="space-y-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-muted">⋯ SINAPI e configurações</summary>
+        <div className="mt-3 space-y-6">
+          <ImportarSinapi uf={config.uf} referencia={config.referenciaSinapi} totalImportado={nSinapi} />
+          <ReaplicarSinapi />
+          <ConfigPrecosForm config={config} />
+        </div>
+      </details>
     </div>
   );
 }
