@@ -10,7 +10,7 @@ import { rotear } from "./rotas";
 const hex = (cor: string) => CORES_CABO[cor]?.hex ?? cor;
 
 /** Espessura do traço (mm de desenho) proporcional à seção do cabo. */
-const espessura = (secao: number) => Math.min(3.4, 0.9 + Math.sqrt(Math.max(secao, 1)) * 0.45);
+const espessura = (secao: number) => Math.min(2.2, 0.55 + Math.sqrt(Math.max(secao, 1)) * 0.3);
 
 /**
  * Desenho das ligações internas do quadro em SVG: peças com terminais numerados,
