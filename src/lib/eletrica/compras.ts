@@ -8,6 +8,17 @@ import { analisarQuadro, type AnaliseQuadro, secaoProtecao } from "./calculo";
 import { buscarPreco, type ItemCatalogoSimples } from "./orcamento-quadro";
 import { modulosOcupados, peca, type Peca } from "./pecas";
 import type { Fase, QuadroDados } from "./tipos";
+import { caixaDoModelo, capacidadeTotal, descreverModelo, linhasDoModelo } from "./caixas";
+
+/** Provisório até o motor de ligações: um pente por trilho DIN, sem cabos internos. */
+function resumoInterno(dados: QuadroDados) {
+  return {
+    pentes: linhasDoModelo(dados.modelo)
+      .filter((l) => l.padrao === "DIN")
+      .map((l) => ({ tipo: "pente", modulos: l.modulos })),
+    cabosInternos: [] as { secao: number; cor: string; metros: number; funcoes: string[] }[],
+  };
+}
 
 export const CATEGORIAS_COMPRA = {
   protecao: "Proteção (disjuntores, DR, DPS)",
@@ -130,6 +141,11 @@ export function montarListaCompras(
   }
 
   // --- Quadro e acessórios
+  // Pentes e cabos internos vêm das ligações do quadro (preenchido em src/lib/eletrica/ligacoes.ts).
+  const ligacoesDoQuadro: {
+    pentes: { tipo: string; modulos: number }[];
+    cabosInternos: { secao: number; cor: string; metros: number; funcoes: string[] }[];
+  } = resumoInterno(dados);
   const totalMod = capacidadeTotal(dados.modelo);
   const nema = dados.modelo.padrao === "NEMA";
   const livres = Math.max(0, totalMod - dados.componentes.reduce((s, c) => s + (peca(c.pecaId) ? modulosOcupados(peca(c.pecaId)!) : 0), 0));
