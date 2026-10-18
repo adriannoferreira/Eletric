@@ -306,6 +306,8 @@ export function TabelaLigacoes({
   aoMarcar?: (id: string, feito: boolean) => void;
 }) {
   let i = 0;
+  // Na tela, abre só a próxima etapa com ligações pendentes; na impressão, todas.
+  const proxima = etapas.find((et) => ligacoes.some((l) => l.etapa === et && !feitas.has(l.id)));
   return (
     <div className="space-y-3">
       {etapas.map((et) => {
@@ -313,7 +315,7 @@ export function TabelaLigacoes({
         const feitasEtapa = daEtapa.filter((l) => feitas.has(l.id)).length;
         const tela = Boolean(aoMarcar);
         return (
-        <details key={et} open={!tela || feitasEtapa < daEtapa.length} className="group break-inside-avoid">
+        <details key={et} open={!tela || et === proxima} className="group break-inside-avoid">
           <summary className="mb-1 flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted [&::-webkit-details-marker]:hidden">
             <span className="flex-1">{et}</span>
             {tela && (
