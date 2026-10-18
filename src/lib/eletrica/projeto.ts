@@ -709,6 +709,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
       circuitos: circuitosFinais,
       projeto: p,
       memorial: null,
+      compras: [],
     },
     demanda,
     alertas,

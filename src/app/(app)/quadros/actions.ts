@@ -1,12 +1,14 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { db, quadros } from "@/db";
+import { catalogo, clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
 import { MODELOS_QUADRO } from "@/lib/eletrica/pecas";
 import { quadroExemplo } from "@/lib/eletrica/exemplos";
+import { itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
 import { gerarQuadro } from "@/lib/eletrica/projeto";
 import { lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
 
@@ -122,7 +124,7 @@ export async function salvarComoModelo(nome: string, descricao: string, dados: u
     descricao: descricao.trim().slice(0, 300),
     clienteId: null,
     modelo: true,
-    dados: { ...r.data, memorial: null },
+    dados: { ...r.data, memorial: null, compras: [] },
   });
   revalidatePath("/quadros");
   return { ok: true as const };
@@ -134,7 +136,7 @@ export async function usarModelo(modeloId: number, nome: string, clienteId: numb
     .from(quadros)
     .where(and(eq(quadros.id, modeloId), eq(quadros.modelo, true)));
   if (!m) return "Modelo não encontrado.";
-  const dados = { ...lerQuadro(m.dados), memorial: null };
+  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [] };
   const [q] = await db
     .insert(quadros)
     .values({ nome: nome.trim() || m.nome, clienteId, dados })
@@ -164,4 +166,66 @@ export async function carregarExemplo(exemploId: string) {
   if (!ex) return;
   await db.insert(quadros).values({ nome: ex.nome, descricao: ex.descricao, modelo: true, dados: ex.dados });
   revalidatePath("/quadros");
+}
+
+// ---------------------------------------------------------------------------
+// Lista de compras e orçamento
+// ---------------------------------------------------------------------------
+
+/** Marca/desmarca itens comprados (salvo direto no banco para sincronizar aparelhos). */
+export async function salvarCompras(id: number, chaves: string[]) {
+  const lista = [...new Set(chaves.filter((c) => typeof c === "string"))].slice(0, 500);
+  await db
+    .update(quadros)
+    .set({ dados: sql`jsonb_set(${quadros.dados}, '{compras}', ${JSON.stringify(lista)}::jsonb, true)` })
+    .where(eq(quadros.id, id));
+}
+
+/**
+ * Cria um orçamento (rascunho) a partir do quadro salvo: materiais da lista do
+ * quadro + mão de obra, com preços do catálogo. Redireciona para o editor.
+ */
+export async function gerarOrcamentoDoQuadro(quadroId: number, clienteEscolhido: number | null) {
+  const [q] = await db.select().from(quadros).where(eq(quadros.id, quadroId));
+  if (!q) return "Quadro não encontrado.";
+  const clienteId = clienteEscolhido ?? q.clienteId;
+  if (!clienteId) return "Escolha o cliente do orçamento.";
+  const [cli] = await db.select({ id: clientes.id }).from(clientes).where(eq(clientes.id, clienteId));
+  if (!cli) return "Cliente não encontrado.";
+
+  const cat = await db
+    .select({ tipo: catalogo.tipo, nome: catalogo.nome, unidade: catalogo.unidade, preco: catalogo.preco })
+    .from(catalogo)
+    .where(eq(catalogo.ativo, true));
+  const dados = lerQuadro(q.dados);
+  const itens = itensOrcamentoDoQuadro(dados, cat);
+
+  if (!q.clienteId && !q.modelo) await db.update(quadros).set({ clienteId }).where(eq(quadros.id, quadroId));
+  const [o] = await db
+    .insert(orcamentos)
+    .values({
+      clienteId,
+      titulo: `Instalação do quadro ${q.nome}`,
+      tokenPublico: randomBytes(12).toString("base64url"),
+      observacoes: [
+        "Serviço executado conforme a ABNT NBR 5410 (instalações elétricas de baixa tensão) e a NR-10.",
+        "Materiais e quantidades conforme o projeto do quadro de distribuição; cabos com 10% de folga.",
+      ].join("\n"),
+    })
+    .returning({ id: orcamentos.id });
+  if (itens.length) {
+    await db.insert(orcamentoItens).values(
+      itens.map((i, ordem) => ({
+        orcamentoId: o.id,
+        tipo: i.tipo,
+        descricao: i.descricao,
+        quantidade: i.quantidade,
+        unidade: i.unidade,
+        precoUnitario: i.precoUnitario,
+        ordem,
+      })),
+    );
+  }
+  revalidatePath("/orcamentos");
+  redirect(`/orcamentos/${o.id}`);
 }

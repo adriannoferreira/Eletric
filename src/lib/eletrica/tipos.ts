@@ -180,6 +180,8 @@ export const QuadroDadosSchema = z.object({
   projeto: ProjetoObraSchema.nullable().catch(null),
   /** Último memorial descritivo gerado pela IA (vale também para quadros montados à mão). */
   memorial: z.object({ texto: z.string(), geradoEm: z.string() }).nullable().catch(null),
+  /** Itens da lista de compras já comprados (chaves de `montarListaCompras`). */
+  compras: z.array(z.string()).catch([]),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -203,6 +205,7 @@ export function novoQuadro(
     circuitos: [],
     projeto: null,
     memorial: null,
+    compras: [],
   };
 }
 
