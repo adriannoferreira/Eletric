@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Barra inferior (celular) */}
       <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {NAV_PRINCIPAL.map((item) => {
             const on = ativo(pathname, item.href);
             return (
@@ -62,10 +62,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   on ? "text-fg" : "text-muted"
                 }`}
               >
-                <span className={`rounded-full px-4 py-1 ${on ? "bg-accent-soft" : ""}`}>
+                <span className={`rounded-full px-3 py-1 ${on ? "bg-accent-soft" : ""}`}>
                   <item.icone className="size-5" />
                 </span>
-                {item.rotulo}
+                {item.curto ?? item.rotulo}
               </Link>
             );
           })}
@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               maisAtivo ? "text-fg" : "text-muted"
             }`}
           >
-            <span className={`rounded-full px-4 py-1 ${maisAtivo ? "bg-accent-soft" : ""}`}>
+            <span className={`rounded-full px-3 py-1 ${maisAtivo ? "bg-accent-soft" : ""}`}>
               <Menu className="size-5" />
             </span>
             Mais

@@ -1,7 +1,9 @@
 import {
   Bot,
   Boxes,
+  CalendarDays,
   Calculator,
+  ClipboardList,
   FileText,
   Home,
   LayoutGrid,
@@ -12,18 +14,20 @@ import {
   Users,
 } from "lucide-react";
 
-export type ItemNav = { href: string; rotulo: string; icone: LucideIcon };
+export type ItemNav = { href: string; rotulo: string; icone: LucideIcon; /** Rótulo curto da barra inferior. */ curto?: string };
 
 /** Abas fixas na barra inferior do celular. */
 export const NAV_PRINCIPAL: ItemNav[] = [
   { href: "/", rotulo: "Início", icone: Home },
-  { href: "/orcamentos", rotulo: "Orçamentos", icone: FileText },
+  { href: "/agenda", rotulo: "Agenda", icone: CalendarDays },
+  { href: "/orcamentos", rotulo: "Orçamentos", icone: FileText, curto: "Orçam." },
   { href: "/quadros", rotulo: "Quadros", icone: LayoutGrid },
   { href: "/ia", rotulo: "IA", icone: Bot },
 ];
 
 /** Demais módulos (no celular ficam em "Mais"). */
 export const NAV_SECUNDARIA: ItemNav[] = [
+  { href: "/os", rotulo: "Ordens de serviço", icone: ClipboardList },
   { href: "/clientes", rotulo: "Clientes", icone: Users },
   { href: "/vendas", rotulo: "Vendas & Marketing", icone: Megaphone },
   { href: "/calculadoras", rotulo: "Calculadoras", icone: Calculator },

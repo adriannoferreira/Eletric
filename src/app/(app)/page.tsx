@@ -10,6 +10,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
+import { AlertaPrecos } from "@/components/precos/alerta-precos";
+import { CardHoje } from "@/components/os/hoje";
 import { Badge } from "@/components/ui";
 import { catalogo, clientes, db, equipamentos, orcamentoItens, orcamentos, perfil, quadros } from "@/db";
 import { reais } from "@/lib/formato";
@@ -114,6 +116,8 @@ export default async function Inicio() {
         ))}
       </section>
 
+      <CardHoje />
+
       {pendentes.length > 0 && (
         <section className="card p-4">
           <p className="mb-2 font-semibold">Primeiros passos ({primeirosPassos.length - pendentes.length}/{primeirosPassos.length})</p>
@@ -155,6 +159,8 @@ export default async function Inicio() {
           <ChevronRight className="size-4" />
         </Link>
       )}
+
+      <AlertaPrecos />
 
       {manutencoes.length > 0 && (
         <section className="space-y-2">
