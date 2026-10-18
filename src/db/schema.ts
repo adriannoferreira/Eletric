@@ -65,6 +65,25 @@ export const catalogo = pgTable("catalogo", {
   unidade: text("unidade").notNull().default("un"),
   preco: money("preco").notNull().default(0),
   ativo: boolean("ativo").notNull().default(true),
+  /** Especificação técnica (ex.: "750 V, classe 5, antichama"). */
+  especificacao: text("especificacao").notNull().default(""),
+  /** De onde veio o preço atual: manual | cotacao | ia | sinapi | calculado */
+  fontePreco: text("fonte_preco").notNull().default("manual"),
+  precoAtualizadoEm: timestamp("preco_atualizado_em", { withTimezone: true }).defaultNow(),
+  fornecedor: text("fornecedor").notNull().default(""),
+  codigoSinapi: text("codigo_sinapi").notNull().default(""),
+  /** Serviços: tempo padrão por unidade, em horas. */
+  horasEletricista: numeric("horas_eletricista", { precision: 8, scale: 3, mode: "number" }),
+  horasAjudante: numeric("horas_ajudante", { precision: 8, scale: 3, mode: "number" }),
+  /** Dificuldade: multiplica o custo das horas (1 = normal). */
+  multiplicador: numeric("multiplicador", { precision: 5, scale: 2, mode: "number" }).notNull().default(1),
+  deslocamento: money("deslocamento"),
+  /** Serviços: true = usa o preço digitado; false = calcula pelas horas × valor/hora. */
+  precoFixo: boolean("preco_fixo").notNull().default(true),
+  /** Faixa de preço de mercado na região (pesquisa com IA). */
+  mercadoMin: money("mercado_min"),
+  mercadoMax: money("mercado_max"),
+  mercadoAtualizadoEm: timestamp("mercado_atualizado_em", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -104,6 +123,8 @@ export const orcamentoItens = pgTable("orcamento_itens", {
   unidade: text("unidade").notNull().default("un"),
   precoUnitario: money("preco_unitario").notNull().default(0),
   ordem: integer("ordem").notNull().default(0),
+  /** Nome do kit de onde o item veio (agrupa visualmente no orçamento). */
+  grupo: text("grupo").notNull().default(""),
 });
 
 /** Quadros de distribuição montados no construtor. O desenho fica em `dados`. */
