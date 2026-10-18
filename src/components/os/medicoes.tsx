@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { adicionarMedicao, excluirMedicao, salvarAnaliseMedicoes } from "@/app/(app)/os/actions";
+import { Ajuda, Conferir } from "@/components/divulgacao";
 import { lerStream, TextoIA } from "@/components/texto-ia";
 import { Badge, type Tom } from "@/components/ui";
 import type { Medicao } from "@/db/schema-servicos";
@@ -137,8 +138,14 @@ export function Medicoes({
         </>
       )}
 
-      <div className="space-y-3 rounded-xl bg-surface-2 p-3">
-        <p className="text-sm font-semibold">Nova medição</p>
+      <details open={medicoes.length === 0} className="group space-y-3 rounded-xl bg-surface-2 p-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2">
+            <Plus className="size-4" /> Nova medição
+          </span>
+          <ChevronDown className="size-4 text-muted transition group-open:rotate-180" />
+        </summary>
+        <div className="mt-3 space-y-3">
         <div className="grid gap-2 sm:grid-cols-2">
           <select
             value={tipo}
@@ -158,7 +165,7 @@ export function Medicoes({
               </optgroup>
             ))}
           </select>
-          <input value={ponto} onChange={(e) => setPonto(e.target.value)} placeholder="Ponto (ex.: Circuito 3 — chuveiro)" className="input" />
+          <input value={ponto} onChange={(e) => setPonto(e.target.value)} placeholder="Onde (ex.: Circuito 3)" className="input" />
           {t.parametros.map((p) => (
             <label key={p.chave} className="flex items-center gap-2 text-sm">
               <span className="shrink-0 text-muted">{p.rotulo}</span>
@@ -209,20 +216,21 @@ export function Medicoes({
         {previa && (
           <p className="flex items-center gap-2 text-sm">
             <Badge tom={TOM_RESULTADO[previa.resultado].tom}>{TOM_RESULTADO[previa.resultado].rotulo}</Badge>
-            <span className="text-muted">
-              Critério: {previa.criterio}
-              {t.conferir ? " · conferir na norma vigente" : ""}
-            </span>
+            <span className="text-muted">{previa.criterio}</span>
+            {t.conferir && <Conferir itens={[`${t.nome}: ${t.referencia}. Conferir na edição vigente da norma/fabricante.`]} />}
           </p>
-        )}
-        {instrumentos.length === 0 && (
-          <p className="text-xs text-muted">Dica: cadastre seus instrumentos em Equipamentos (categoria “Instrumento de medição”) para aparecerem no relatório.</p>
         )}
         {erro && <p className="text-sm text-danger">{erro}</p>}
         <button onClick={adicionar} disabled={pendente} className="btn btn-primary w-full sm:w-auto">
           {pendente ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Registrar medição
         </button>
-      </div>
+        {instrumentos.length === 0 && (
+          <Ajuda titulo="Instrumentos no relatório">
+            <p>Cadastre multímetro, alicate, megômetro e terrômetro em Equipamentos (categoria “Instrumento de medição”) para aparecerem no relatório.</p>
+          </Ajuda>
+        )}
+        </div>
+      </details>
 
       {medicoes.length > 0 && (
         <div className="space-y-3">

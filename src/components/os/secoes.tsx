@@ -93,8 +93,8 @@ export function Visitas({ osId, visitas, outras }: { osId: number; visitas: Visi
       {novo ? (
         <div className="grid grid-cols-[1fr_6rem] gap-2 rounded-xl border border-border p-3">
           <input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} className="input" />
-          <input type="number" min={15} step={15} value={duracao} onChange={(e) => setDuracao(e.target.value)} className="input" aria-label="Duração em minutos" />
-          <p className="col-span-2 text-xs text-muted">Duração em minutos</p>
+          <input type="number" min={15} step={15} value={duracao} onChange={(e) => setDuracao(e.target.value)} placeholder="min" title="Duração em minutos" className="input" aria-label="Duração em minutos" />
+
           {erro && <p className="col-span-2 text-sm text-danger">{erro}</p>}
           <button className="btn btn-secondary" onClick={() => setNovo(false)}>Cancelar</button>
           <button
@@ -328,11 +328,11 @@ export function Materiais({ osId, materiais, catalogo }: { osId: number; materia
             )}
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <input inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} className="input" aria-label="Quantidade" />
-            <input value={un} onChange={(e) => setUn(e.target.value)} className="input" aria-label="Unidade" />
-            <input inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} className="input" aria-label="Preço unitário" />
+            <input inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} placeholder="Qtd" className="input" aria-label="Quantidade" />
+            <input value={un} onChange={(e) => setUn(e.target.value)} placeholder="Un." className="input" aria-label="Unidade" />
+            <input inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="R$ un." className="input" aria-label="Preço unitário" />
           </div>
-          <p className="text-xs text-muted">Quantidade · unidade · preço unitário (R$)</p>
+
           <div className="grid grid-cols-2 gap-2">
             <button className="btn btn-secondary" onClick={() => setAberto(false)}>Cancelar</button>
             <button

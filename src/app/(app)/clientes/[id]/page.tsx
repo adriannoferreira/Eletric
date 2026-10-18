@@ -2,6 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { FilePlus2, FileText, Gauge, Images, LayoutGrid, Mail, MapPin, MessageCircle, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MenuAcoes } from "@/components/divulgacao";
 import { Badge, Cabecalho } from "@/components/ui";
 import { clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
 import { dataCurta, linkWhatsApp, reais } from "@/lib/formato";
@@ -42,9 +43,13 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
         }`}
         voltar="/clientes"
         acoes={
-          <Link href={`/clientes/${id}/editar`} className="btn btn-secondary">
-            <Pencil className="size-4" /> Editar
-          </Link>
+          <MenuAcoes
+            acoes={[
+              { rotulo: "Editar", icone: <Pencil />, href: `/clientes/${id}/editar` },
+              { rotulo: "Relatório fotográfico", icone: <Images />, href: `/clientes/${id}/fotos`, externo: true },
+              { rotulo: "Relatório de medições", icone: <Gauge />, href: `/clientes/${id}/medicoes`, externo: true },
+            ]}
+          />
         }
       />
 
@@ -124,15 +129,6 @@ export default async function ClientePage({ params }: PageProps<"/clientes/[id]"
           </ul>
         </section>
       )}
-
-      <div className="mb-4 grid gap-2 sm:grid-cols-2">
-        <a href={`/clientes/${id}/fotos`} target="_blank" className="btn btn-secondary">
-          <Images className="size-4" /> Relatório fotográfico da obra
-        </a>
-        <a href={`/clientes/${id}/medicoes`} target="_blank" className="btn btn-secondary">
-          <Gauge className="size-4" /> Relatório de medições da obra
-        </a>
-      </div>
 
       <ExcluirCliente id={id} />
     </>

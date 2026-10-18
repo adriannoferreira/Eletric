@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardCheck, Clock, ExternalLink, FileText, Gauge, Image as ImageIcon, Images, MapPin, MessageCircle, MoreVertical, Navigation, Package, Pause, Pencil, Phone, Play, Receipt, RotateCcw, Save, Star, Trash2, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardCheck, Clock, ExternalLink, FileText, Gauge, Image as ImageIcon, Images, MapPin, MessageCircle, Navigation, Package, Pause, Pencil, Phone, Play, Receipt, RotateCcw, Save, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { excluirOS, mudarStatusOS, salvarAssinatura, salvarCamposOS, salvarConfigServicos } from "@/app/(app)/os/actions";
+import { Ajuda, MaisOpcoes, MenuAcoes } from "@/components/divulgacao";
 import { Badge, Campo } from "@/components/ui";
 import type { Cliente } from "@/db/schema";
 import type { Medicao, OrdemServico, OsHora, OsMaterial, Visita } from "@/db/schema-servicos";
@@ -31,10 +32,19 @@ type Props = {
   instrumentos: Instrumento[];
 };
 
+const ABAS = [
+  { v: "execucao", r: "Execução" },
+  { v: "fotos", r: "Fotos" },
+  { v: "medicoes", r: "Medições" },
+  { v: "conclusao", r: "Conclusão" },
+] as const;
+type Aba = (typeof ABAS)[number]["v"];
+
 export function PainelOS(p: Props) {
   const { os, cliente } = p;
   const [pendente, iniciar] = useTransition();
-  const [menu, setMenu] = useState(false);
+  const [aba, setAba] = useState<Aba>(os.status === "concluida" ? "conclusao" : "execucao");
+  const contagem: Partial<Record<Aba, number>> = { fotos: p.fotos.length, medicoes: p.medicoes.length };
   const [erro, setErro] = useState<string | null>(null);
   const st = STATUS_OS[os.status as StatusOS] ?? STATUS_OS.agendada;
   const endereco = os.endereco || [cliente.endereco, cliente.bairro, cliente.cidade].filter(Boolean).join(", ");
@@ -51,41 +61,31 @@ export function PainelOS(p: Props) {
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
+          <div className="flex items-center gap-2 text-sm text-muted">
             <span>OS {os.id}</span>
             <Badge tom={st.tom}>{st.rotulo}</Badge>
-            {os.categoria !== "Geral" && <Badge>{os.categoria}</Badge>}
           </div>
-          <h1 className="text-xl font-bold tracking-tight md:text-2xl">{os.titulo}</h1>
-          <Link href={`/clientes/${cliente.id}`} className="text-sm text-muted hover:underline">{cliente.nome}</Link>
+          <h1 className="truncate text-xl font-bold tracking-tight md:text-2xl">{os.titulo}</h1>
+          <Link href={`/clientes/${cliente.id}`} className="block truncate text-sm text-muted hover:underline">
+            {cliente.nome}
+            {endereco ? ` · ${endereco}` : ""}
+          </Link>
         </div>
-        <div className="relative">
-          <button onClick={() => setMenu(!menu)} className="btn btn-ghost p-2" aria-label="Mais ações">
-            <MoreVertical className="size-5" />
-          </button>
-          {menu && (
-            <div className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-xl" onClick={() => setMenu(false)}>
-              {p.orcamento && (
-                <Link href={`/orcamentos/${p.orcamento.id}`} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
-                  <FileText className="size-4" /> Ver orçamento
-                </Link>
-              )}
-              {os.quadroId && (
-                <Link href={`/quadros/${os.quadroId}`} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
-                  <ExternalLink className="size-4" /> Ver quadro
-                </Link>
-              )}
-              {os.status !== "cancelada" && os.status !== "concluida" && (
-                <button onClick={() => confirm("Cancelar esta OS?") && status("cancelada")} className="flex w-full items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
-                  <XCircle className="size-4" /> Cancelar OS
-                </button>
-              )}
-              <button onClick={() => confirm("Excluir esta OS e tudo o que foi registrado nela?") && iniciar(() => excluirOS(os.id))} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-danger hover:bg-surface-2">
-                <Trash2 className="size-4" /> Excluir OS
-              </button>
-            </div>
-          )}
-        </div>
+        <MenuAcoes
+          acoes={[
+            ...(p.orcamento ? [{ rotulo: "Ver orçamento", icone: <FileText />, href: `/orcamentos/${p.orcamento.id}` }] : []),
+            ...(os.quadroId ? [{ rotulo: "Ver quadro", icone: <ExternalLink />, href: `/quadros/${os.quadroId}` }] : []),
+            ...(os.status !== "cancelada" && os.status !== "concluida"
+              ? [{ rotulo: "Cancelar OS", icone: <XCircle />, onClick: () => confirm("Cancelar esta OS?") && status("cancelada") }]
+              : []),
+            {
+              rotulo: "Excluir OS",
+              icone: <Trash2 />,
+              perigo: true,
+              onClick: () => confirm("Excluir esta OS e tudo o que foi registrado nela?") && iniciar(() => excluirOS(os.id)),
+            },
+          ]}
+        />
       </header>
 
       {/* Contato rápido */}
@@ -103,7 +103,6 @@ export function PainelOS(p: Props) {
           <Navigation className="size-4" /> <span className="hidden sm:inline">Waze</span>
         </a>
       </div>
-      {endereco && <p className="-mt-2 text-sm text-muted">📍 {endereco}</p>}
 
       {/* Ações de status */}
       <div className="flex flex-wrap gap-2">
@@ -138,15 +137,35 @@ export function PainelOS(p: Props) {
           </button>
         )}
         {os.status === "cancelada" && (
-          <p className="flex-1 rounded-xl bg-surface-2 p-3 text-sm text-muted">OS cancelada. Agende uma visita para reativar.</p>
+          <p className="flex-1 rounded-xl bg-surface-2 p-3 text-sm text-muted">OS cancelada.</p>
         )}
       </div>
       {erro && <p className="text-sm text-danger">{erro}</p>}
 
       {os.descricao && (
-        <p className="whitespace-pre-wrap rounded-2xl bg-surface-2 p-4 text-sm">{os.descricao}</p>
+        <details className="group rounded-2xl bg-surface-2 p-3 text-sm">
+          <summary className="cursor-pointer list-none truncate [&::-webkit-details-marker]:hidden group-open:whitespace-pre-wrap">
+            {os.descricao}
+          </summary>
+        </details>
       )}
 
+      <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 md:mx-0 md:px-0" role="tablist">
+        {ABAS.map((a) => (
+          <button
+            key={a.v}
+            role="tab"
+            aria-selected={aba === a.v}
+            onClick={() => setAba(a.v)}
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium ${aba === a.v ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted"}`}
+          >
+            {a.r}
+            {contagem[a.v] ? <span className="ml-1 opacity-70">{contagem[a.v]}</span> : null}
+          </button>
+        ))}
+      </nav>
+
+      {aba === "execucao" && (
       <div className="grid gap-4 lg:grid-cols-2">
         <Secao titulo="Agenda" icone={CalendarDays}>
           <Visitas osId={os.id} visitas={p.visitas} outras={p.outrasVisitas} />
@@ -161,18 +180,26 @@ export function PainelOS(p: Props) {
           <Materiais osId={os.id} materiais={p.materiais} catalogo={p.catalogo} />
         </Secao>
       </div>
+      )}
 
-      <Secao titulo="Fotos" icone={ImageIcon}>
-        <Fotos osId={os.id} fotos={p.fotos} />
-      </Secao>
+      {aba === "fotos" && (
+        <Secao titulo="Fotos" icone={ImageIcon}>
+          <Fotos osId={os.id} fotos={p.fotos} />
+        </Secao>
+      )}
 
-      <Secao titulo="Medições elétricas" icone={Gauge}>
-        <Medicoes osId={os.id} titulo={os.titulo} medicoes={p.medicoes} instrumentos={p.instrumentos} analise={os.analiseMedicoes} />
-      </Secao>
+      {aba === "medicoes" && (
+        <Secao titulo="Medições elétricas" icone={Gauge}>
+          <Medicoes osId={os.id} titulo={os.titulo} medicoes={p.medicoes} instrumentos={p.instrumentos} analise={os.analiseMedicoes} />
+        </Secao>
+      )}
 
-      <DadosPagamento os={os} />
-
-      <Conclusao {...p} />
+      {aba === "conclusao" && (
+        <>
+          <Conclusao {...p} />
+          <DadosPagamento os={os} />
+        </>
+      )}
     </div>
   );
 }
@@ -199,7 +226,7 @@ function DadosPagamento({ os }: { os: OrdemServico }) {
 
   return (
     <Secao
-      titulo="Dados, garantia e pagamento"
+      titulo="Pagamento e dados"
       icone={Pencil}
       extra={
         <button
@@ -217,23 +244,8 @@ function DadosPagamento({ os }: { os: OrdemServico }) {
         </button>
       }
     >
-      <div className="grid gap-3 md:grid-cols-2">
-        <Campo rotulo="Título" className="md:col-span-2">
-          <input value={c.titulo} onChange={(e) => set("titulo", e.target.value)} className="input" />
-        </Campo>
-        <Campo rotulo="Endereço do serviço" className="md:col-span-2">
-          <input value={c.endereco} onChange={(e) => set("endereco", e.target.value)} className="input" />
-        </Campo>
-        <Campo rotulo="Descrição do serviço" className="md:col-span-2">
-          <textarea value={c.descricao} onChange={(e) => set("descricao", e.target.value)} rows={3} className="input" />
-        </Campo>
-        <Campo rotulo="Observações / ocorrências" className="md:col-span-2">
-          <textarea value={c.observacoes} onChange={(e) => set("observacoes", e.target.value)} rows={3} placeholder="Ex.: encontrado neutro com emenda derretida; cliente vai comprar tomada nova" className="input" />
-        </Campo>
-        <Campo rotulo="Garantia (dias)">
-          <input type="number" min={0} value={c.garantiaDias} onChange={(e) => set("garantiaDias", Math.max(0, Number(e.target.value) || 0))} className="input" />
-        </Campo>
-        <Campo rotulo="Valor cobrado (R$)">
+      <div className="grid grid-cols-2 gap-3">
+        <Campo rotulo="Valor (R$)">
           <input
             inputMode="decimal"
             defaultValue={c.valor != null ? String(c.valor).replace(".", ",") : ""}
@@ -244,15 +256,36 @@ function DadosPagamento({ os }: { os: OrdemServico }) {
             className="input"
           />
         </Campo>
-        <Campo rotulo="Forma de pagamento">
-          <input value={c.formaPagamento} onChange={(e) => set("formaPagamento", e.target.value)} placeholder="PIX, dinheiro, cartão…" className="input" />
-        </Campo>
         <Campo rotulo="Situação">
           <select value={c.pagamento} onChange={(e) => set("pagamento", e.target.value as "pago" | "a_receber")} className="input">
             <option value="a_receber">A receber</option>
             <option value="pago">Pago</option>
           </select>
         </Campo>
+      </div>
+      <div className="mt-3">
+        <MaisOpcoes>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Campo rotulo="Forma de pagamento">
+              <input value={c.formaPagamento} onChange={(e) => set("formaPagamento", e.target.value)} placeholder="PIX, dinheiro, cartão…" className="input" />
+            </Campo>
+            <Campo rotulo="Garantia (dias)">
+              <input type="number" min={0} value={c.garantiaDias} onChange={(e) => set("garantiaDias", Math.max(0, Number(e.target.value) || 0))} className="input" />
+            </Campo>
+            <Campo rotulo="Título" className="md:col-span-2">
+              <input value={c.titulo} onChange={(e) => set("titulo", e.target.value)} className="input" />
+            </Campo>
+            <Campo rotulo="Endereço do serviço" className="md:col-span-2">
+              <input value={c.endereco} onChange={(e) => set("endereco", e.target.value)} className="input" />
+            </Campo>
+            <Campo rotulo="Descrição" className="md:col-span-2">
+              <textarea value={c.descricao} onChange={(e) => set("descricao", e.target.value)} rows={3} className="input" />
+            </Campo>
+            <Campo rotulo="Observações" className="md:col-span-2">
+              <textarea value={c.observacoes} onChange={(e) => set("observacoes", e.target.value)} rows={3} placeholder="Ex.: neutro com emenda derretida" className="input" />
+            </Campo>
+          </div>
+        </MaisOpcoes>
       </div>
       {msg && <p className={`mt-2 text-sm ${msg === "Salvo." ? "text-ok" : "text-danger"}`}>{msg}</p>}
     </Secao>
@@ -318,41 +351,44 @@ function Conclusao(p: Props) {
           )}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <a href={`/os/${os.id}/relatorio`} target="_blank" className="btn btn-secondary">
-            <FileText className="size-4" /> Relatório / PDF
+        <a
+          href={cliente.telefone ? linkWhatsApp(cliente.telefone, msgRelatorio) : undefined}
+          target="_blank"
+          className={`btn btn-whatsapp w-full ${cliente.telefone ? "" : "pointer-events-none opacity-40"}`}
+        >
+          <MessageCircle className="size-4" /> Enviar resumo ao cliente
+        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={`/os/${os.id}/relatorio`} target="_blank" className="btn btn-secondary px-3 py-2">
+            <FileText className="size-4" /> Relatório
           </a>
-          <a href={`/os/${os.id}/recibo`} target="_blank" className="btn btn-secondary">
+          <a href={`/os/${os.id}/recibo`} target="_blank" className="btn btn-secondary px-3 py-2">
             <Receipt className="size-4" /> Recibo
           </a>
-          <a href={`/os/${os.id}/fotos`} target="_blank" className="btn btn-secondary">
-            <Images className="size-4" /> Relatório fotográfico
-          </a>
-          <a
-            href={cliente.telefone ? linkWhatsApp(cliente.telefone, msgRelatorio) : undefined}
-            target="_blank"
-            className={`btn btn-whatsapp ${cliente.telefone ? "" : "pointer-events-none opacity-40"}`}
-          >
-            <MessageCircle className="size-4" /> Enviar resumo
+          <a href={`/os/${os.id}/fotos`} target="_blank" className="btn btn-secondary px-3 py-2">
+            <Images className="size-4" /> Fotos
           </a>
           {link && !editandoLink ? (
-            <a href={cliente.telefone ? linkWhatsApp(cliente.telefone, msgAvaliacao) : undefined} target="_blank" className={`btn btn-secondary ${cliente.telefone ? "" : "pointer-events-none opacity-40"}`}>
-              <Star className="size-4 text-accent" /> Pedir avaliação
+            <a
+              href={cliente.telefone ? linkWhatsApp(cliente.telefone, msgAvaliacao) : undefined}
+              target="_blank"
+              className={`btn btn-secondary px-3 py-2 ${cliente.telefone ? "" : "pointer-events-none opacity-40"}`}
+            >
+              <Star className="size-4 text-accent" /> Avaliação
             </a>
           ) : (
-            <button onClick={() => setEditandoLink(true)} className="btn btn-secondary">
-              <Star className="size-4 text-accent" /> Configurar avaliação
+            <button onClick={() => setEditandoLink(true)} className="btn btn-secondary px-3 py-2">
+              <Star className="size-4 text-accent" /> Avaliação
             </button>
           )}
+          <Ajuda titulo="Documentos para o cliente" alinhar="direita">
+            <p>Os documentos só abrem para quem está logado no app. Para o cliente, abra o documento, toque em “Salvar PDF” e compartilhe o arquivo no WhatsApp.</p>
+          </Ajuda>
         </div>
-        <p className="text-xs text-muted">
-          O relatório só abre para quem está logado no app. Para o cliente, mande o PDF: abra o relatório, toque em
-          “Salvar PDF” e compartilhe o arquivo no WhatsApp.
-        </p>
 
         {editandoLink && (
           <div className="space-y-2 rounded-xl border border-border p-3">
-            <Campo rotulo="Link de avaliação do Google Meu Negócio" dica="No seu perfil do Google: Pedir avaliações → copiar link">
+            <Campo rotulo="Link de avaliação do Google">
               <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://g.page/r/…" className="input" />
             </Campo>
             <div className="grid grid-cols-2 gap-2">

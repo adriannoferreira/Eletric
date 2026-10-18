@@ -3,6 +3,7 @@
 import { UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { MaisOpcoes } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import { criarOS } from "../actions";
 
@@ -47,7 +48,7 @@ export function FormNovaOS({
           </div>
         </Campo>
         {guias.length > 0 && (
-          <Campo rotulo="Tipo de serviço" dica="Usa o checklist e o tempo padrão do guia" className="md:col-span-2">
+          <Campo rotulo="Tipo de serviço" className="md:col-span-2">
             <select
               value={guia}
               onChange={(e) => {
@@ -73,10 +74,7 @@ export function FormNovaOS({
           </Campo>
         )}
         <Campo rotulo="Título do serviço *" className="md:col-span-2">
-          <input name="titulo" required value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Troca do chuveiro e instalação de DR" className="input" />
-        </Campo>
-        <Campo rotulo="Endereço do serviço" dica="Em branco = endereço do cadastro do cliente" className="md:col-span-2">
-          <input name="endereco" className="input" />
+          <input name="titulo" required value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Troca do chuveiro" className="input" />
         </Campo>
         <label className="flex items-center gap-2 text-sm font-medium md:col-span-2">
           <input type="checkbox" checked={agendar} onChange={(e) => setAgendar(e.target.checked)} className="size-4 accent-[var(--accent)]" />
@@ -92,9 +90,16 @@ export function FormNovaOS({
             </Campo>
           </>
         )}
-        <Campo rotulo="Descrição / combinado com o cliente" className="md:col-span-2">
-          <textarea name="descricao" rows={3} defaultValue={inicial.descricao} className="input" />
-        </Campo>
+        <div className="md:col-span-2">
+          <MaisOpcoes>
+            <Campo rotulo="Endereço do serviço">
+              <input name="endereco" placeholder="Em branco = endereço do cliente" className="input" />
+            </Campo>
+            <Campo rotulo="Descrição / combinado">
+              <textarea name="descricao" rows={3} defaultValue={inicial.descricao} className="input" />
+            </Campo>
+          </MaisOpcoes>
+        </div>
       </div>
       {erro && <p className="text-sm text-danger">{erro}</p>}
       <button className="btn btn-primary w-full md:w-auto" disabled={pendente}>

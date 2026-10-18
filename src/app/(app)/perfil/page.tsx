@@ -8,7 +8,7 @@ export default async function PerfilPage() {
   const [p] = await db.select().from(perfil).limit(1);
   return (
     <>
-      <Cabecalho titulo="Meu perfil" subtitulo="Seus dados aparecem nos orçamentos enviados aos clientes" voltar="/" />
+      <Cabecalho titulo="Meu perfil" ajuda={<p>Seus dados aparecem nos orçamentos, relatórios e laudos enviados aos clientes.</p>} voltar="/" />
       <FormPerfil perfil={p} />
     </>
   );

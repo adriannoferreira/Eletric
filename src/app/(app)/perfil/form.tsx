@@ -7,14 +7,14 @@ import { salvarPerfil } from "./actions";
 
 const CAMPOS: { nome: keyof Perfil; rotulo: string; dica?: string; tipo?: string }[] = [
   { nome: "nome", rotulo: "Seu nome" },
-  { nome: "empresa", rotulo: "Nome da empresa / marca", dica: "Aparece em destaque no orçamento" },
-  { nome: "telefone", rotulo: "WhatsApp", tipo: "tel", dica: "O cliente usa para aprovar o orçamento" },
+  { nome: "empresa", rotulo: "Nome da empresa / marca", dica: "Ex.: Silva Elétrica" },
+  { nome: "telefone", rotulo: "WhatsApp", tipo: "tel", dica: "(91) 98888-7777" },
   { nome: "email", rotulo: "E-mail", tipo: "email" },
   { nome: "cidade", rotulo: "Cidade / região de atendimento" },
   { nome: "documento", rotulo: "CPF ou CNPJ (MEI)" },
   { nome: "chavePix", rotulo: "Chave PIX" },
   { nome: "instagram", rotulo: "Instagram", dica: "Ex.: @joaoeletricista" },
-  { nome: "registroProfissional", rotulo: "Registro profissional", dica: "Ex.: CFT/CRT 12345 · NR-10 válida até 03/2027" },
+  { nome: "registroProfissional", rotulo: "Registro profissional", dica: "Ex.: CFT/CRT 12345" },
 ];
 
 export function FormPerfil({ perfil }: { perfil?: Perfil }) {
@@ -23,8 +23,8 @@ export function FormPerfil({ perfil }: { perfil?: Perfil }) {
     <form action={acao} className="card space-y-4 p-4 md:p-6">
       <div className="grid gap-4 md:grid-cols-2">
         {CAMPOS.map((c) => (
-          <Campo key={c.nome} rotulo={c.rotulo} dica={c.dica}>
-            <input name={c.nome} type={c.tipo ?? "text"} defaultValue={String(perfil?.[c.nome] ?? "")} className="input" />
+          <Campo key={c.nome} rotulo={c.rotulo}>
+            <input name={c.nome} type={c.tipo ?? "text"} defaultValue={String(perfil?.[c.nome] ?? "")} placeholder={c.dica} className="input" />
           </Campo>
         ))}
       </div>

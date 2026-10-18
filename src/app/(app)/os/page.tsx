@@ -74,7 +74,6 @@ export default async function OSPage({ searchParams }: PageProps<"/os">) {
     <>
       <Cabecalho
         titulo="Ordens de serviço"
-        subtitulo="Cada serviço do agendamento à entrega"
         acoes={
           <>
             <Link href="/agenda" className="btn btn-secondary">
