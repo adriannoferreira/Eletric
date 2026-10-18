@@ -114,6 +114,9 @@ export const quadros = pgTable("quadros", {
   }),
   nome: text("nome").notNull(),
   dados: jsonb("dados").notNull(),
+  /** true = modelo reutilizável (não aparece na lista de quadros). */
+  modelo: boolean("modelo").notNull().default(false),
+  descricao: text("descricao").notNull().default(""),
   ...timestamps,
 });
 

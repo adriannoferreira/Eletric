@@ -15,6 +15,13 @@
       "when": 1792335767164,
       "tag": "0001_vendas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792337718001,
+      "tag": "0002_modelos-quadro",
+      "breakpoints": true
     }
   ]
 }
