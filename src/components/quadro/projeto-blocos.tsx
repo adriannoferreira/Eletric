@@ -73,6 +73,7 @@ export function BlocoDemanda({ dados, demanda }: { dados: QuadroDados; demanda: 
         <p className="text-sm">
           <b>Concessionária:</b> {conc.nome} — {conc.norma}
           {conc.normaConferir && <span className="text-warn"> (conferir nome/revisão da norma)</span>}
+          {conc.tensaoConferir && <span className="text-warn"> · tensão {conc.tensoes.join(" ou ")} V a conferir com a concessionária</span>}
         </p>
       )}
       <ul className="space-y-1 text-xs text-muted">

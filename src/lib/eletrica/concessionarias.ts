@@ -20,6 +20,8 @@ export interface Concessionaria {
   tensoes: Tensoes[];
   /** `true` quando o código da norma não foi confirmado — mostrar "conferir". */
   normaConferir?: boolean;
+  /** `true` quando a tensão usual da região não foi confirmada. */
+  tensaoConferir?: boolean;
 }
 
 export const CONCESSIONARIAS: Concessionaria[] = [
@@ -36,7 +38,16 @@ export const CONCESSIONARIAS: Concessionaria[] = [
   { id: "coelba", nome: "Neoenergia Coelba", regiao: "Bahia", norma: "Norma de fornecimento em BT Neoenergia", tensoes: ["220/380"], normaConferir: true },
   { id: "neoenergia-pe", nome: "Neoenergia Pernambuco", regiao: "Pernambuco", norma: "Norma de fornecimento em BT Neoenergia", tensoes: ["220/380"], normaConferir: true },
   { id: "elektro", nome: "Neoenergia Elektro", regiao: "Interior de SP / MS", norma: "Norma de fornecimento em BT Neoenergia", tensoes: ["127/220"], normaConferir: true },
-  { id: "equatorial", nome: "Equatorial", regiao: "PA, MA, PI, AL, GO, AP", norma: "Norma de fornecimento em BT Equatorial (varia por estado)", tensoes: ["127/220", "220/380"], normaConferir: true },
+  {
+    id: "equatorial-pa",
+    nome: "Equatorial Pará",
+    regiao: "Pará (Belém, Ananindeua, Salinópolis…)",
+    norma: "Norma técnica de fornecimento em tensão secundária da Equatorial Energia (conferir código e revisão vigentes)",
+    tensoes: ["127/220"],
+    normaConferir: true,
+    tensaoConferir: true,
+  },
+  { id: "equatorial", nome: "Equatorial (MA, PI, AL, GO, AP)", regiao: "MA, PI, AL, GO, AP", norma: "Norma de fornecimento em BT Equatorial (varia por estado)", tensoes: ["127/220", "220/380"], normaConferir: true },
   { id: "ceee", nome: "CEEE Equatorial", regiao: "Rio Grande do Sul", norma: "RIC BT — Regulamento de Instalações Consumidoras", tensoes: ["220/380", "127/220"], normaConferir: true },
   { id: "energisa", nome: "Energisa", regiao: "MT, MS, TO, PB, SE, RO, AC, MG, SP…", norma: "NDU 001 — Fornecimento a edificações individuais", tensoes: ["127/220", "220/380"], normaConferir: true },
   { id: "edp-es", nome: "EDP Espírito Santo", regiao: "Espírito Santo", norma: "Norma de fornecimento em BT da EDP", tensoes: ["127/220"], normaConferir: true },

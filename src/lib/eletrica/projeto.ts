@@ -776,7 +776,8 @@ export function projetoVazio(): ProjetoObra {
   return {
     obra: {
       tipoImovel: "casa",
-      concessionaria: "outra",
+      // Região do usuário: Belém/Ananindeua/Salinópolis (PA).
+      concessionaria: "equatorial-pa",
       tensoes: "127/220",
       esquema: "TN-C-S",
       fornecimentoExistente: "desconhecido",

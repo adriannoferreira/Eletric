@@ -247,7 +247,10 @@ export function AssistenteProjeto({
                 ))}
               </select>
             </Campo>
-            <Campo rotulo="Tensão da rede">
+            <Campo
+              rotulo="Tensão da rede"
+              dica={concessionaria(projeto.obra.concessionaria).tensaoConferir ? "Tensão usual da região — conferir com a concessionária" : undefined}
+            >
               <div className="grid grid-cols-2 gap-2">
                 {(["127/220", "220/380"] as const).map((t) => (
                   <button

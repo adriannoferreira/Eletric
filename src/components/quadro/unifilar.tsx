@@ -122,15 +122,11 @@ export function Unifilar({
   const semDR = resultados.filter((r) => !grupos.some((g) => g.itens.includes(r)));
   if (semDR.length || drGeral) grupos.push({ dr: drGeral, itens: semDR });
 
-  let x = X0 + 120;
-  const colunas = grupos
-    .filter((g) => g.itens.length || g.dr)
-    .map((g) => {
-      const largura = Math.max(1, g.itens.length) * COL;
-      const ini = x;
-      x += largura + 18;
-      return { ...g, ini, largura };
-    });
+  const gruposVisiveis = grupos.filter((g) => g.itens.length || g.dr);
+  const larguras = gruposVisiveis.map((g) => Math.max(1, g.itens.length) * COL);
+  const inicios = larguras.map((_, i) => X0 + 120 + larguras.slice(0, i).reduce((s, l) => s + l + 18, 0));
+  const colunas = gruposVisiveis.map((g, i) => ({ ...g, ini: inicios[i], largura: larguras[i] }));
+  const x = X0 + 120 + larguras.reduce((s, l) => s + l + 18, 0);
   const largura = Math.max(x + 30, selo ? 680 : 420);
   const alturaDiagrama = Y_TEXTO + ALTURA_TEXTO;
   const altura = alturaDiagrama + (selo ? 96 : 10);
