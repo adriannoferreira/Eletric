@@ -2,6 +2,7 @@
 
 import { Camera, ClipboardCheck, FileText, Loader2, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Sk } from "@/components/skeleton";
 import { lerStream, TextoIA } from "@/components/texto-ia";
 import {
   dentroDoLimite,
@@ -452,7 +453,15 @@ Responda em Markdown, direto para o celular:
       </button>
       {(mostrado || carregando) && (
         <div className="card p-4">
-          {mostrado ? <TextoIA>{mostrado}</TextoIA> : <span className="text-sm text-muted">Analisando…</span>}
+          {mostrado ? (
+            <TextoIA>{mostrado}</TextoIA>
+          ) : (
+            <div className="space-y-2" aria-label="Analisando">
+              <Sk className="h-4 w-1/4" />
+              <Sk className="h-3 w-full" />
+              <Sk className="h-3 w-5/6" />
+            </div>
+          )}
         </div>
       )}
     </div>

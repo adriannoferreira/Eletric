@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Check, Copy, ExternalLink, FileText, Loader2, Plus, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Sk } from "@/components/skeleton";
 import { lerStream } from "@/components/texto-ia";
 import { Campo } from "@/components/ui";
 import { analisarQuadro } from "@/lib/eletrica/calculo";
@@ -180,6 +181,12 @@ conforme|ressalvas|nao_conforme
       <button onClick={redigir} disabled={redigindo} className="btn btn-primary">
         {redigindo ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Redigir laudo com IA
       </button>
+      {redigindo && !rascunhoIA && (
+        <div className="space-y-2" aria-label="Redigindo">
+          <Sk className="h-3 w-full" />
+          <Sk className="h-3 w-4/5" />
+        </div>
+      )}
       {rascunhoIA && <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-surface-2 p-3 text-xs">{rascunhoIA}</pre>}
 
       <Campo rotulo="2. Objetivo e escopo">

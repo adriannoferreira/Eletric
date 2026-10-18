@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import {
+  Wrench,
   AlertTriangle,
   Bot,
   ChevronRight,
@@ -10,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui";
-import { catalogo, clientes, db, equipamentos, orcamentoItens, orcamentos, perfil } from "@/db";
+import { catalogo, clientes, db, equipamentos, orcamentoItens, orcamentos, perfil, quadros } from "@/db";
 import { reais } from "@/lib/formato";
 import { STATUS_ORCAMENTO } from "@/lib/opcoes";
 import { numeroOrcamento } from "@/lib/orcamento";
@@ -32,11 +33,22 @@ function datasReferencia() {
     inicioMes,
     tresDias: new Date(Date.now() - 3 * 86_400_000),
     em30dias: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+    em7dias: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10),
+    hojeISO: new Date().toISOString().slice(0, 10),
   };
 }
 
 export default async function Inicio() {
-  const { inicioMes, tresDias, em30dias } = datasReferencia();
+  const { inicioMes, tresDias, em30dias, em7dias, hojeISO } = datasReferencia();
+
+  const proximaManut = sql<string>`${quadros.dados}->'manutencao'->>'proximaVisita'`;
+  const manutencoes = await db
+    .select({ id: quadros.id, nome: quadros.nome, cliente: clientes.nome, proxima: proximaManut })
+    .from(quadros)
+    .leftJoin(clientes, eq(clientes.id, quadros.clienteId))
+    .where(and(eq(quadros.modelo, false), sql`coalesce(${proximaManut}, '') <> ''`, sql`${proximaManut} <= ${em7dias}`))
+    .orderBy(proximaManut)
+    .limit(10);
 
   const [[p], [{ nClientes }], [{ nCatalogo }], porStatus, [{ followups }], recentes, alertasEquip] = await Promise.all([
     db.select().from(perfil).limit(1),
@@ -142,6 +154,28 @@ export default async function Inicio() {
           </span>
           <ChevronRight className="size-4" />
         </Link>
+      )}
+
+      {manutencoes.length > 0 && (
+        <section className="space-y-2">
+          {manutencoes.map((m) => {
+            const atrasada = m.proxima < hojeISO;
+            return (
+              <Link
+                key={m.id}
+                href={`/quadros/${m.id}?aba=manutencao`}
+                className={`flex items-center gap-3 rounded-2xl p-4 ${atrasada ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}`}
+              >
+                <Wrench className="size-5 shrink-0" />
+                <span className="flex-1 text-sm font-medium">
+                  Manutenção preventiva {atrasada ? "atrasada" : "próxima"}: {m.nome}
+                  {m.cliente ? ` (${m.cliente})` : ""} — {new Date(`${m.proxima}T12:00:00`).toLocaleDateString("pt-BR")}
+                </span>
+                <ChevronRight className="size-4" />
+              </Link>
+            );
+          })}
+        </section>
       )}
 
       {recentes.length > 0 && (

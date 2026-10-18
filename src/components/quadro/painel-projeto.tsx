@@ -4,6 +4,7 @@ import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Sparkles, Tags } f
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { salvarMemorial } from "@/app/(app)/quadros/actions";
+import { Sk } from "@/components/skeleton";
 import { lerStream, TextoIA } from "@/components/texto-ia";
 import { type AnaliseQuadro, listaMateriais } from "@/lib/eletrica/calculo";
 import type { QuadroDados } from "@/lib/eletrica/tipos";
@@ -154,9 +155,12 @@ export function PainelProjeto({
               {memorial ? (
                 <TextoIA>{memorial}</TextoIA>
               ) : (
-                <span className="flex items-center gap-2 text-sm text-muted">
-                  <Loader2 className="size-4 animate-spin" /> Escrevendo o memorial…
-                </span>
+                <div className="space-y-2" aria-label="Escrevendo o memorial">
+                  <Sk className="h-4 w-1/3" />
+                  <Sk className="h-3 w-full" />
+                  <Sk className="h-3 w-11/12" />
+                  <Sk className="h-3 w-4/5" />
+                </div>
               )}
             </div>
           )}

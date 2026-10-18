@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 export const MODELO = "claude-opus-5-5";
 
 let cliente: Anthropic | null = null;
-function anthropic() {
+export function anthropic() {
   cliente ??= new Anthropic();
   return cliente;
 }
