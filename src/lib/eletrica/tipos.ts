@@ -172,6 +172,12 @@ export const ObraSchema = z.object({
   /** Proteger todos os circuitos com DR (recomendado) ou só os obrigatórios. */
   drEmTodos: z.boolean().catch(true),
   observacoes: z.string().catch(""),
+  /** Preferências da caixa gerada (o tamanho é escolhido pelo app). */
+  caixaInstalacao: z.enum(["embutir", "sobrepor"]).catch("embutir"),
+  caixaMaterial: z.enum(["pvc", "metalico"]).catch("pvc"),
+  caixaIP: z.enum(["IP40", "IP54", "IP65"]).catch("IP40"),
+  /** Caixa fixa escolhida pelo usuário (catálogo). Vazio = o app escolhe a menor que caiba. */
+  caixaId: z.string().nullable().catch(null),
 });
 export type Obra = z.infer<typeof ObraSchema>;
 

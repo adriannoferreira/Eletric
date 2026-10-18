@@ -49,7 +49,9 @@ const fmt = (n: number) => n.toLocaleString("pt-BR");
 function especificacaoPeca(p: Peca) {
   switch (p.tipo) {
     case "disjuntor":
-      return `Termomagnético DIN ${p.polos} polo(s), curva ${p.curva}, ${p.correnteNominal} A, Icn ≥ 3 kA (confirme a corrente de curto no local) — ${p.norma}`;
+      return p.padrao === "NEMA"
+        ? `Termomagnético padrão NEMA (plug-in) ${p.polos} polo(s), ${p.correnteNominal} A, compatível com o barramento da caixa (mesma marca) — ${p.norma}`
+        : `Termomagnético DIN ${p.polos} polo(s), curva ${p.curva}, ${p.correnteNominal} A, Icn ≥ 3 kA (confirme a corrente de curto no local) — ${p.norma}`;
     case "dr":
       return `Interruptor DR (IDR) ${p.polos} polos, ${p.correnteNominal} A, sensibilidade ${p.sensibilidadeMa} mA, tipo AC ou A — ${p.norma}`;
     case "dps":
@@ -128,26 +130,48 @@ export function montarListaCompras(
   }
 
   // --- Quadro e acessórios
-  const totalMod = dados.modelo.fileiras * dados.modelo.modulosPorFileira;
+  const totalMod = capacidadeTotal(dados.modelo);
+  const nema = dados.modelo.padrao === "NEMA";
   const livres = Math.max(0, totalMod - dados.componentes.reduce((s, c) => s + (peca(c.pecaId) ? modulosOcupados(peca(c.pecaId)!) : 0), 0));
+  const cx = caixaDoModelo(dados.modelo);
   add({
     chave: "quadro:caixa",
     categoria: "quadro",
-    descricao: `Quadro de distribuição de ${dados.modelo.instalacao} ${totalMod} módulos DIN`,
-    especificacao: `${dados.modelo.fileiras} fileira(s) × ${dados.modelo.modulosPorFileira} módulos, com trilho DIN 35 mm, porta e barras de neutro/terra (confira se vem incluso)`,
+    descricao: nema
+      ? `Quadro de distribuição NEMA de ${dados.modelo.instalacao} para ${dados.modelo.fileiras * dados.modelo.modulosPorFileira} disjuntores`
+      : `Quadro de distribuição de ${dados.modelo.instalacao} ${totalMod} módulos DIN`,
+    especificacao: `${descreverModelo(dados.modelo)}${cx ? ` · ~${cx.medidas.altura}×${cx.medidas.largura}×${cx.medidas.profundidade} mm` : ""}. ${
+      nema
+        ? `Com barramento de fases NEMA${dados.modelo.trilhoAux ? ` e trilho DIN auxiliar de ${dados.modelo.trilhoAux} módulos` : ""}`
+        : "Com trilho DIN 35 mm"
+    }, porta e barras de neutro/terra (confira se vem incluso; medidas aproximadas — conferir catálogo)`,
     quantidade: 1,
     unidade: "un",
     precoUnitario: preco([/quadro/, new RegExp(`\\b${totalMod} ?(modulos|disjuntores)`)], [new RegExp(dados.modelo.instalacao)]),
   });
-  add({
-    chave: "quadro:pente",
-    categoria: "quadro",
-    descricao: "Barramento pente",
-    especificacao: `Pente de cobre isolado para disjuntores DIN (mono/bi/tri conforme a fileira) — ${dados.modelo.fileiras} peça(s) de ${dados.modelo.modulosPorFileira} módulos, cortar na medida`,
-    quantidade: dados.modelo.fileiras,
-    unidade: "un",
-    precoUnitario: preco([/pente|barramento/]),
-  });
+  const pentes = ligacoesDoQuadro.pentes;
+  if (pentes.length > 0) {
+    add({
+      chave: "quadro:pente",
+      categoria: "quadro",
+      descricao: "Barramento pente",
+      especificacao: `Pente de cobre isolado para disjuntores DIN — ${pentes.map((p) => `${p.tipo} ${p.modulos} mód.`).join("; ")}; cortar na medida. Capacidade conforme o geral (conferir catálogo)`,
+      quantidade: pentes.length,
+      unidade: "un",
+      precoUnitario: preco([/pente|barramento/]),
+    });
+  }
+  for (const c of ligacoesDoQuadro.cabosInternos) {
+    add({
+      chave: `interno:${c.secao}:${c.cor}`,
+      categoria: "quadro",
+      descricao: `Cabo flexível ${fmt(c.secao)} mm² — ligações internas do quadro, ${c.cor}`,
+      especificacao: `Cobre classe 5, 450/750 V, cor ${c.cor} (${c.funcoes.join(", ")}). Medida da lista de ligações + 20% de folga`,
+      quantidade: Math.max(1, Math.ceil(c.metros * 1.2)),
+      unidade: "m",
+      precoUnitario: preco([/cabo/, new RegExp(`\\b${String(c.secao).replace(".", ",")} ?mm`)]),
+    });
+  }
   const nCirc = dados.circuitos.length;
   add({ chave: "quadro:neutro", categoria: "quadro", descricao: "Barra de neutro isolada (azul)", especificacao: `Com pelo menos ${nCirc + 2} bornes`, quantidade: 1, unidade: "un", precoUnitario: preco([/barra|borne/, /neutro/]) });
   add({ chave: "quadro:terra", categoria: "quadro", descricao: "Barra de terra/PE (verde)", especificacao: `Com pelo menos ${nCirc + 2} bornes`, quantidade: 1, unidade: "un", precoUnitario: preco([/barra|borne/, /terra/]) });

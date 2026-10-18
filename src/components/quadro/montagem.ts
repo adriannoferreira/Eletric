@@ -1,5 +1,6 @@
 import { analisarQuadro, dimensionar, tensaoDoCircuito } from "@/lib/eletrica/calculo";
-import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
+import { linhasDoModelo } from "@/lib/eletrica/caixas";
+import { modulosOcupados, padraoDaPeca, peca, PECAS } from "@/lib/eletrica/pecas";
 import {
   type Circuito,
   type Componente,
@@ -9,11 +10,9 @@ import {
   type QuadroDados,
 } from "@/lib/eletrica/tipos";
 
-/** Mapa de ocupação: [fileira][módulo] = id do componente ou null. */
+/** Mapa de ocupação: [linha][módulo] = id do componente ou null (linhas = trilhos DIN, colunas NEMA e trilho auxiliar). */
 export function ocupacao(q: QuadroDados, ignorar?: string) {
-  const mapa: (string | null)[][] = Array.from({ length: q.modelo.fileiras }, () =>
-    Array<string | null>(q.modelo.modulosPorFileira).fill(null),
-  );
+  const mapa: (string | null)[][] = linhasDoModelo(q.modelo).map((l) => Array<string | null>(l.modulos).fill(null));
   for (const c of q.componentes) {
     if (c.id === ignorar) continue;
     const p = peca(c.pecaId);
@@ -25,7 +24,16 @@ export function ocupacao(q: QuadroDados, ignorar?: string) {
   return mapa;
 }
 
-export function cabe(q: QuadroDados, fileira: number, posicao: number, largura: number, ignorar?: string) {
+/** O espaço está livre? Com `padrao`, também exige que a linha seja do mesmo padrão da peça (DIN × NEMA). */
+export function cabe(
+  q: QuadroDados,
+  fileira: number,
+  posicao: number,
+  largura: number,
+  ignorar?: string,
+  padrao?: "DIN" | "NEMA",
+) {
+  if (padrao && linhasDoModelo(q.modelo)[fileira]?.padrao !== padrao) return false;
   const mapa = ocupacao(q, ignorar);
   const linha = mapa[fileira];
   if (!linha || posicao < 0 || posicao + largura > linha.length) return false;
@@ -34,10 +42,17 @@ export function cabe(q: QuadroDados, fileira: number, posicao: number, largura: 
 }
 
 /** Primeiro espaço livre contíguo (preferindo a partir de uma posição). */
-export function primeiroEspaco(q: QuadroDados, largura: number, preferencia?: { fileira: number; posicao: number }) {
-  if (preferencia && cabe(q, preferencia.fileira, preferencia.posicao, largura)) return preferencia;
-  for (let f = 0; f < q.modelo.fileiras; f++)
-    for (let p = 0; p + largura <= q.modelo.modulosPorFileira; p++) if (cabe(q, f, p, largura)) return { fileira: f, posicao: p };
+export function primeiroEspaco(
+  q: QuadroDados,
+  largura: number,
+  preferencia?: { fileira: number; posicao: number },
+  padrao: "DIN" | "NEMA" = "DIN",
+) {
+  if (preferencia && cabe(q, preferencia.fileira, preferencia.posicao, largura, undefined, padrao)) return preferencia;
+  const linhas = linhasDoModelo(q.modelo);
+  for (let f = 0; f < linhas.length; f++)
+    for (let p = 0; p + largura <= linhas[f].modulos; p++)
+      if (cabe(q, f, p, largura, undefined, padrao)) return { fileira: f, posicao: p };
   return null;
 }
 
@@ -53,7 +68,10 @@ export function polosDaLigacao(c: Pick<Circuito, "ligacao">) {
   return c.ligacao === "FN" ? 1 : c.ligacao === "FF" ? 2 : 3;
 }
 
-/** Disjuntor sugerido pelo motor: polos da ligação, In calculada, curva B para iluminação e C para o resto. */
+/**
+ * Disjuntor sugerido pelo motor: polos da ligação, In calculada, curva B para iluminação
+ * e C para o resto. Em caixa NEMA, o disjuntor NEMA com Ib ≤ In ≤ Iz (ou o menor ≥ Ib).
+ */
 export function disjuntorSugerido(q: QuadroDados, c: Circuito) {
   const d = dimensionar({
     ...c,
@@ -61,6 +79,15 @@ export function disjuntorSugerido(q: QuadroDados, c: Circuito) {
   });
   if (!d.disjuntor) return undefined;
   const polos = polosDaLigacao(c);
+  if (q.modelo.padrao === "NEMA") {
+    const nemas = PECAS.filter((p) => p.padrao === "NEMA" && p.polos === polos).sort(
+      (a, b) => (a.correnteNominal ?? 0) - (b.correnteNominal ?? 0),
+    );
+    return (
+      nemas.find((p) => (p.correnteNominal ?? 0) >= d.ib && (!d.iz || (p.correnteNominal ?? 0) <= d.iz)) ??
+      nemas.find((p) => (p.correnteNominal ?? 0) >= d.ib)
+    );
+  }
   const curva = c.tipo === "iluminacao" ? "B" : "C";
   return peca(`dj-${polos}p-${curva}${d.disjuntor}`) ?? peca(`dj-${polos}p-C${d.disjuntor}`);
 }
@@ -74,7 +101,7 @@ export function adicionarComponente(
 ): { quadro: QuadroDados; id: string } | null {
   const p = peca(pecaId);
   if (!p) return null;
-  const lugar = primeiroEspaco(q, modulosOcupados(p), onde);
+  const lugar = primeiroEspaco(q, modulosOcupados(p), onde, padraoDaPeca(p));
   if (!lugar) return null;
   const id = novoId("k");
   let fases: Fase[];

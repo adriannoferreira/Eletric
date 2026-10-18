@@ -9,7 +9,8 @@
  */
 import { analisarQuadro, correnteProjeto, dimensionar, disjuntorMinimo, tensaoDoCircuito } from "./calculo";
 import { concessionaria, LIMITES_CATEGORIA_KVA } from "./concessionarias";
-import { MODELOS_QUADRO, modulosOcupados, peca, type Peca } from "./pecas";
+import { type Caixa, caixa as caixaPorId, filtrarCaixas, modeloDaCaixa } from "./caixas";
+import { modulosOcupados, peca, type Peca } from "./pecas";
 import { CORRENTES_NOMINAIS, reservaMinima } from "./tabelas";
 import {
   type Alimentacao,
@@ -698,7 +699,13 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
   for (const c of circuitos) if (!dj.get(c.id)) alertas.push({ nivel: "erro", mensagem: `Sem disjuntor no catálogo para "${c.nome}".` });
 
   const circuitosFinais = circuitos.map((c) => ({ ...c, drId: drDoCircuito.get(c.id) ?? null }));
-  const { modelo, componentes } = posicionar(fila, reservaMinima(circuitos.length));
+  const { modelo, componentes, aviso: avisoCaixa } = posicionar(fila, reservaMinima(circuitos.length), {
+    caixaId: p.obra.caixaId,
+    instalacao: p.obra.caixaInstalacao,
+    material: p.obra.caixaMaterial,
+    ip: p.obra.caixaIP,
+  });
+  if (avisoCaixa) alertas.push({ nivel: "aviso", mensagem: avisoCaixa });
 
   return {
     dados: {
@@ -726,11 +733,24 @@ function exigeDRLocal(c: Circuito) {
   return (c.tipo === "tug" || c.tipo === "tue") && (l.externo || c.alimentaExterno);
 }
 
-/** Escolhe a menor caixa comercial em que tudo cabe (com reserva) e posiciona em sequência. */
+export interface PreferenciaCaixa {
+  /** Caixa fixa (catálogo DIN). Se não couber, cai na escolha automática com aviso. */
+  caixaId?: string | null;
+  instalacao?: "embutir" | "sobrepor";
+  material?: "pvc" | "metalico";
+  ip?: "IP40" | "IP54" | "IP65";
+}
+
+/**
+ * Escolhe a menor caixa DIN do catálogo (respeitando instalação/material/IP preferidos)
+ * em que tudo cabe com a reserva da NBR 5410 6.5.4.7, e posiciona as peças em sequência.
+ * Sem caixa no catálogo, monta uma personalizada com trilhos de 24 módulos.
+ */
 export function posicionar(
   fila: Omit<Componente, "fileira" | "posicao">[],
   reserva: number,
-): { modelo: ModeloQuadro; componentes: Componente[] } {
+  pref: PreferenciaCaixa = {},
+): { modelo: ModeloQuadro; componentes: Componente[]; aviso?: string } {
   const larguras = fila.map((c) => modulosOcupados(peca(c.pecaId)!));
   const tentar = (fileiras: number, porFileira: number) => {
     const comps: Componente[] = [];
@@ -748,21 +768,50 @@ export function posicionar(
       pos += w;
     }
     const usados = larguras.reduce((s, w) => s + w, 0);
-    // Módulos livres de verdade (descontando sobras no fim das fileiras ocupadas).
     if (fileiras * porFileira - usados < reserva) return null;
     return comps;
   };
-  for (const m of MODELOS_QUADRO) {
-    const comps = tentar(m.fileiras, m.modulosPorFileira);
-    if (comps) return { modelo: { fileiras: m.fileiras, modulosPorFileira: m.modulosPorFileira, instalacao: "embutir" }, componentes: comps };
+  let aviso: string | undefined;
+  const fixa = caixaPorId(pref.caixaId);
+  if (fixa && fixa.padrao === "DIN") {
+    const comps = tentar(fixa.fileiras, fixa.modulosPorFileira);
+    if (comps) return { modelo: modeloDaCaixa(fixa), componentes: comps };
+    aviso = `A caixa escolhida (${fixa.nome}) não comporta as peças com a reserva da NBR 5410 6.5.4.7 — o app escolheu uma maior.`;
+  } else if (fixa) {
+    aviso = "Caixa NEMA não é usada pelo gerador automático (disjuntores DIN). O app escolheu uma caixa DIN — troque depois no construtor se quiser NEMA.";
   }
-  // Maior que os modelos comuns: quadro de 18 módulos por fileira com as fileiras necessárias.
-  for (let fileiras = 4; fileiras <= 8; fileiras++) {
-    const comps = tentar(fileiras, 18);
-    if (comps) return { modelo: { fileiras, modulosPorFileira: 18, instalacao: "sobrepor" }, componentes: comps };
+  const candidatas = (filtro: PreferenciaCaixa): Caixa[] =>
+    filtrarCaixas({ padrao: "DIN", instalacao: filtro.instalacao, material: filtro.material, ip: filtro.ip });
+  // Preferência completa → só instalação/material → qualquer DIN.
+  for (const filtro of [pref, { instalacao: pref.instalacao, material: pref.material }, {}]) {
+    for (const c of candidatas(filtro)) {
+      const comps = tentar(c.fileiras, c.modulosPorFileira);
+      if (comps) return { modelo: modeloDaCaixa(c), componentes: comps, aviso };
+    }
   }
-  const comps = tentar(8, 36) ?? [];
-  return { modelo: { fileiras: 8, modulosPorFileira: 36, instalacao: "sobrepor" }, componentes: comps };
+  for (let fileiras = 6; fileiras <= 10; fileiras++) {
+    const comps = tentar(fileiras, 24);
+    if (comps)
+      return {
+        modelo: {
+          caixaId: null,
+          fileiras,
+          modulosPorFileira: 24,
+          instalacao: "sobrepor",
+          padrao: "DIN",
+          material: "metalico",
+          ip: pref.ip ?? "IP40",
+          trilhoAux: 0,
+        },
+        componentes: comps,
+        aviso,
+      };
+  }
+  const comps = tentar(10, 36) ?? [];
+  return {
+    modelo: { caixaId: null, fileiras: 10, modulosPorFileira: 36, instalacao: "sobrepor", padrao: "DIN", material: "metalico", ip: "IP40", trilhoAux: 0 },
+    componentes: comps,
+  };
 }
 
 /** Verifica rapidamente se o quadro gerado ficou sem erros no motor. */
@@ -787,6 +836,10 @@ export function projetoVazio(): ProjetoObra {
       agrupamento: 1,
       drEmTodos: true,
       observacoes: "",
+      caixaInstalacao: "embutir",
+      caixaMaterial: "pvc",
+      caixaIP: "IP40",
+      caixaId: null,
     },
     ambientes: [],
     cargas: [],

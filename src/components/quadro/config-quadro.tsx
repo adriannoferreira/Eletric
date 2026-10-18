@@ -1,8 +1,10 @@
 "use client";
 
 import { Campo } from "@/components/ui";
-import { MODELOS_QUADRO, modulosOcupados, peca } from "@/lib/eletrica/pecas";
-import type { QuadroDados } from "@/lib/eletrica/tipos";
+import { descreverModelo, trocarCaixa } from "@/lib/eletrica/caixas";
+import { larguraPeca, modulosOcupados, peca } from "@/lib/eletrica/pecas";
+import type { ModeloQuadro, QuadroDados } from "@/lib/eletrica/tipos";
+import { SeletorCaixa } from "./seletor-caixa";
 
 export function ConfigQuadro({
   dados,
@@ -20,12 +22,26 @@ export function ConfigQuadro({
   const a = dados.alimentacao;
   const m = dados.modelo;
   const setA = (p: Partial<QuadroDados["alimentacao"]>) => aoMudar({ ...dados, alimentacao: { ...a, ...p } });
-  const cabeNaCaixa = (c: QuadroDados["componentes"][number], fileiras: number, mods: number) => {
-    const p = peca(c.pecaId);
-    return c.fileira < fileiras && c.posicao + (p ? modulosOcupados(p) : 1) <= mods;
+  const usados = dados.componentes.reduce((s, c) => s + (peca(c.pecaId) ? modulosOcupados(peca(c.pecaId)!) : 0), 0);
+  const ocupadosFixos = dados.componentes
+    .filter((c) => !c.circuitoId)
+    .reduce((s, c) => s + (peca(c.pecaId) ? modulosOcupados(peca(c.pecaId)!) : 0), 0);
+
+  /** Troca a caixa reposicionando as peças; avisa (e pede confirmação) se alguma não couber. */
+  const mudarCaixa = (novo: ModeloQuadro) => {
+    const r = trocarCaixa(dados.componentes, novo, larguraPeca);
+    if (r.naoCouberam.length) {
+      const nomes = r.naoCouberam.map((c) => peca(c.pecaId)?.nome ?? c.pecaId).slice(0, 6).join(", ");
+      if (!confirm(`${r.naoCouberam.length} peça(s) não cabem na nova caixa e serão retiradas: ${nomes}. Continuar?`)) return;
+    } else if (r.movidas > 0 && !confirm(`${r.movidas} peça(s) vão mudar de lugar para caber na nova caixa. Continuar?`)) return;
+    const removidas = new Set(r.naoCouberam.map((c) => c.id));
+    aoMudar({
+      ...dados,
+      modelo: novo,
+      componentes: r.componentes,
+      circuitos: dados.circuitos.map((c) => (c.drId && removidas.has(c.drId) ? { ...c, drId: null } : c)),
+    });
   };
-  const foraDoQuadro = (fileiras: number, mods: number) =>
-    dados.componentes.filter((c) => !cabeNaCaixa(c, fileiras, mods)).length;
 
   return (
     <div className="space-y-4">
@@ -64,37 +80,12 @@ export function ConfigQuadro({
         </Campo>
       </div>
       <div className="space-y-1.5">
-        <span className="label">Tamanho da caixa</span>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {MODELOS_QUADRO.map((mod) => {
-            const atual = mod.fileiras === m.fileiras && mod.modulosPorFileira === m.modulosPorFileira;
-            const perde = foraDoQuadro(mod.fileiras, mod.modulosPorFileira);
-            return (
-              <button
-                key={mod.id}
-                onClick={() => {
-                  if (perde && !confirm(`${perde} peça(s) ficariam fora do quadro e serão removidas. Continuar?`)) return;
-                  aoMudar({
-                    ...dados,
-                    modelo: { ...m, fileiras: mod.fileiras, modulosPorFileira: mod.modulosPorFileira },
-                    componentes: dados.componentes.filter((c) => cabeNaCaixa(c, mod.fileiras, mod.modulosPorFileira)),
-                  });
-                }}
-                className={`rounded-xl border p-2.5 text-center ${atual ? "border-accent bg-accent-soft" : "border-border"}`}
-              >
-                <span className="block font-bold">{mod.fileiras * mod.modulosPorFileira}</span>
-                <span className="text-xs text-muted">{mod.fileiras} × {mod.modulosPorFileira}</span>
-              </button>
-            );
-          })}
-        </div>
+        <span className="label">Caixa do quadro</span>
+        <p className="text-sm">
+          Atual: <b>{descreverModelo(m)}</b>
+        </p>
+        <SeletorCaixa valor={m} aoMudar={mudarCaixa} ocupados={ocupadosFixos} minimo={usados} />
       </div>
-      <Campo rotulo="Instalação">
-        <select className="input" value={m.instalacao} onChange={(e) => aoMudar({ ...dados, modelo: { ...m, instalacao: e.target.value as typeof m.instalacao } })}>
-          <option value="embutir">De embutir</option>
-          <option value="sobrepor">De sobrepor</option>
-        </select>
-      </Campo>
     </div>
   );
 }

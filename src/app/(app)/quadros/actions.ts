@@ -6,12 +6,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { catalogo, clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
-import { MODELOS_QUADRO } from "@/lib/eletrica/pecas";
 import { quadroExemplo } from "@/lib/eletrica/exemplos";
 import { itensOrcamentoPendencias } from "@/lib/eletrica/manutencao";
 import { type ItemOrcamentoGerado, itensOrcamentoDoQuadro } from "@/lib/eletrica/orcamento-quadro";
 import { gerarQuadro } from "@/lib/eletrica/projeto";
-import { InspecaoSchema, LaudoSchema, ManutencaoSchema, RegistroArtSchema, lerQuadro, novoQuadro, ProjetoObraSchema, QuadroDadosSchema } from "@/lib/eletrica/tipos";
+import { trocarCaixa } from "@/lib/eletrica/caixas";
+import { larguraPeca } from "@/lib/eletrica/pecas";
+import { ModeloSchema, InspecaoSchema, LaudoSchema, ManutencaoSchema, RegistroArtSchema, lerQuadro, novoQuadro, ProjetoObraSchema, type QuadroDados, QuadroDadosSchema } from "@/lib/eletrica/tipos";
 
 const NovoQuadro = z.object({
   nome: z.string().trim().min(1, "Dê um nome ao quadro").max(120),
@@ -20,18 +21,22 @@ const NovoQuadro = z.object({
   tensoes: z.enum(["127/220", "220/380", "220/220"]),
   esquema: z.enum(["TN-S", "TN-C-S", "TT"]),
   modelo: z.string(),
-  instalacao: z.enum(["embutir", "sobrepor"]),
 });
 
 export async function criarQuadro(_: string | null, form: FormData) {
   const r = NovoQuadro.safeParse(Object.fromEntries(form));
   if (!r.success) return r.error.issues[0]?.message ?? "Dados inválidos";
   const d = r.data;
-  const modelo = MODELOS_QUADRO.find((m) => m.id === d.modelo) ?? MODELOS_QUADRO[3];
+  let modelo: unknown = {};
+  try {
+    modelo = JSON.parse(d.modelo);
+  } catch {
+    /* modelo padrão */
+  }
   const [fn, ff] = d.tensoes.split("/").map(Number);
   const dados = novoQuadro(
     { tipo: d.tipo, tensaoFN: fn, tensaoFF: d.tipo === "monofasico" ? fn : ff, esquema: d.esquema },
-    { fileiras: modelo.fileiras, modulosPorFileira: modelo.modulosPorFileira, instalacao: d.instalacao },
+    ModeloSchema.parse(modelo),
   );
   const [q] = await db
     .insert(quadros)
@@ -136,13 +141,19 @@ export async function salvarComoModelo(nome: string, descricao: string, dados: u
   return { ok: true as const };
 }
 
-export async function usarModelo(modeloId: number, nome: string, clienteId: number | null) {
+export async function usarModelo(modeloId: number, nome: string, clienteId: number | null, novaCaixa?: unknown) {
   const [m] = await db
     .select()
     .from(quadros)
     .where(and(eq(quadros.id, modeloId), eq(quadros.modelo, true)));
   if (!m) return "Modelo não encontrado.";
-  const dados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null, art: null, manutencao: null };
+  let dados: QuadroDados = { ...lerQuadro(m.dados), memorial: null, compras: [], inspecoes: [], laudo: null, art: null, manutencao: null };
+  if (novaCaixa) {
+    const modelo = ModeloSchema.parse(novaCaixa);
+    const r = trocarCaixa(dados.componentes, modelo, larguraPeca);
+    if (r.naoCouberam.length) return `${r.naoCouberam.length} peça(s) não cabem na caixa escolhida. Escolha uma caixa maior.`;
+    dados = { ...dados, modelo, componentes: r.componentes };
+  }
   const [q] = await db
     .insert(quadros)
     .values({ nome: nome.trim() || m.nome, clienteId, dados })

@@ -45,6 +45,10 @@ const obra = (o: Partial<Obra>): Obra => ({
   agrupamento: 1,
   drEmTodos: true,
   observacoes: "",
+  caixaInstalacao: "embutir",
+  caixaMaterial: "pvc",
+  caixaIP: "IP40",
+  caixaId: null,
   ...o,
 });
 
@@ -123,7 +127,13 @@ function comercio(): ProjetoObra {
   const wc = amb("Banheiro", "banheiro", 3, 7, 10);
   const dep = amb("Depósito", "outro", 12, 14, 12);
   return {
-    obra: obra({ tipoImovel: "comercio", tensoes: "127/220", observacoes: "Pequena loja com ar-condicionado." }),
+    obra: obra({
+      tipoImovel: "comercio",
+      tensoes: "127/220",
+      observacoes: "Pequena loja com ar-condicionado.",
+      caixaInstalacao: "sobrepor",
+      caixaMaterial: "metalico",
+    }),
     ambientes: [loja, esc, copa, wc, dep],
     cargas: [
       carga("ar", loja.id, { nome: "Ar-condicionado 24 000 BTU", potenciaW: 2700 }),

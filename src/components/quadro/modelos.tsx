@@ -4,10 +4,12 @@ import { Download, Pencil, Play, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { carregarExemplo, excluirModelo, renomearModelo, usarModelo } from "@/app/(app)/quadros/actions";
 import { Campo, Vazio } from "@/components/ui";
-import type { QuadroDados } from "@/lib/eletrica/tipos";
+import type { ModeloQuadro, QuadroDados } from "@/lib/eletrica/tipos";
+import { descreverModelo } from "@/lib/eletrica/caixas";
 import { BookCopy } from "lucide-react";
 import { Folha } from "./folha";
 import { MiniaturaQuadro } from "./miniatura";
+import { SeletorCaixa } from "./seletor-caixa";
 
 type Modelo = { id: number; nome: string; descricao: string; dados: QuadroDados; atualizadoEm: string };
 
@@ -24,6 +26,7 @@ export function ListaModelos({
   const [editando, setEditando] = useState<Modelo | null>(null);
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState<string | null>(null);
+  const [outraCaixa, setOutraCaixa] = useState<ModeloQuadro | null>(null);
 
   return (
     <div className="space-y-6">
@@ -49,7 +52,13 @@ export function ListaModelos({
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setUsando(m)} className="btn btn-primary flex-1">
+                  <button
+                    onClick={() => {
+                      setUsando(m);
+                      setOutraCaixa(null);
+                    }}
+                    className="btn btn-primary flex-1"
+                  >
                     <Play className="size-4" /> Usar
                   </button>
                   <button onClick={() => setEditando(m)} className="btn btn-secondary p-2.5" aria-label="Renomear modelo">
@@ -96,7 +105,7 @@ export function ListaModelos({
             action={(f) => {
               setErro(null);
               iniciar(async () => {
-                const r = await usarModelo(usando.id, String(f.get("nome") ?? ""), Number(f.get("clienteId")) || null);
+                const r = await usarModelo(usando.id, String(f.get("nome") ?? ""), Number(f.get("clienteId")) || null, outraCaixa);
                 if (r) setErro(r);
               });
             }}
@@ -114,6 +123,18 @@ export function ListaModelos({
                 ))}
               </select>
             </Campo>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-[var(--accent)]"
+                  checked={Boolean(outraCaixa)}
+                  onChange={(e) => setOutraCaixa(e.target.checked ? usando.dados.modelo : null)}
+                />
+                Usar outra caixa (atual: {descreverModelo(usando.dados.modelo)})
+              </label>
+              {outraCaixa && <SeletorCaixa valor={outraCaixa} aoMudar={setOutraCaixa} />}
+            </div>
             {erro && <p className="text-sm text-danger">{erro}</p>}
             <button className="btn btn-primary w-full" disabled={pendente}>
               Criar quadro a partir do modelo

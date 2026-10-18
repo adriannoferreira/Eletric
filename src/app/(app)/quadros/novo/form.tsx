@@ -2,8 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { Campo } from "@/components/ui";
-import { MODELOS_QUADRO } from "@/lib/eletrica/pecas";
+import { SeletorCaixa } from "@/components/quadro/seletor-caixa";
+import { CAIXAS, modeloDaCaixa } from "@/lib/eletrica/caixas";
+import type { ModeloQuadro } from "@/lib/eletrica/tipos";
 import { criarQuadro } from "../actions";
+
+const CAIXA_PADRAO = CAIXAS.find((c) => c.id === "din-24-2x12-embutir-pvc-ip40") ?? CAIXAS[0];
 
 const TENSOES = {
   "127/220": "127 V (F-N) / 220 V (F-F)",
@@ -20,6 +24,7 @@ export function FormNovoQuadro({
 }) {
   const [erro, acao, pendente] = useActionState(criarQuadro, null);
   const [tipo, setTipo] = useState("bifasico");
+  const [modelo, setModelo] = useState<ModeloQuadro>(() => modeloDaCaixa(CAIXA_PADRAO));
 
   return (
     <form action={acao} className="card space-y-5 p-4 md:p-6">
@@ -59,7 +64,7 @@ export function FormNovoQuadro({
         </div>
       </fieldset>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Campo rotulo="Tensões da rede" dica="Confira com a concessionária da cidade">
           <select name="tensoes" defaultValue="127/220" className="input">
             {Object.entries(TENSOES).map(([v, r]) => (
@@ -74,30 +79,13 @@ export function FormNovoQuadro({
             <option value="TT">TT (terra local, neutro da rede)</option>
           </select>
         </Campo>
-        <Campo rotulo="Instalação da caixa">
-          <select name="instalacao" defaultValue="embutir" className="input">
-            <option value="embutir">De embutir</option>
-            <option value="sobrepor">De sobrepor</option>
-          </select>
-        </Campo>
       </div>
 
-      <fieldset>
-        <legend className="label mb-1.5">Tamanho do quadro (módulos DIN)</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {MODELOS_QUADRO.map((m) => (
-            <label key={m.id} className="cursor-pointer">
-              <input type="radio" name="modelo" value={m.id} defaultChecked={m.id === "24"} className="peer sr-only" />
-              <span className="block rounded-xl border border-border p-3 text-center transition peer-checked:border-accent peer-checked:bg-accent-soft">
-                <span className="block text-lg font-bold">{m.fileiras * m.modulosPorFileira}</span>
-                <span className="block text-xs text-muted">
-                  {m.fileiras} × {m.modulosPorFileira}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-muted">Dá para trocar depois. Dimensões reais variam por fabricante.</p>
+      <fieldset className="space-y-2">
+        <legend className="label mb-1.5">Caixa do quadro</legend>
+        <input type="hidden" name="modelo" value={JSON.stringify(modelo)} />
+        <SeletorCaixa valor={modelo} aoMudar={setModelo} />
+        <p className="text-xs text-muted">Dá para trocar depois em “Configurar quadro”.</p>
       </fieldset>
 
       {erro && <p className="text-sm text-danger">{erro}</p>}

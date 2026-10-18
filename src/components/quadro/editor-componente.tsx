@@ -3,7 +3,8 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pencil, Plus, Replace, Trash2 } from "lucide-react";
 import { Campo } from "@/components/ui";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
-import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
+import { linhasDoModelo } from "@/lib/eletrica/caixas";
+import { modulosOcupados, padraoDaPeca, peca } from "@/lib/eletrica/pecas";
 import { type Componente, type Fase, fasesDisponiveis, type QuadroDados } from "@/lib/eletrica/tipos";
 import { ListaAlertas } from "./alertas";
 import { cabe, COR_FASE } from "./montagem";
@@ -39,10 +40,12 @@ export function EditorComponente({
   const mover = (df: number, dp: number) => {
     const f = componente.fileira + df;
     const pos = componente.posicao + dp;
-    if (cabe(dados, f, pos, largura, componente.id)) aoMudar({ ...componente, fileira: f, posicao: pos });
+    if (cabe(dados, f, pos, largura, componente.id, padraoDaPeca(p))) aoMudar({ ...componente, fileira: f, posicao: pos });
   };
   const podeMover = (df: number, dp: number) =>
-    cabe(dados, componente.fileira + df, componente.posicao + dp, largura, componente.id);
+    cabe(dados, componente.fileira + df, componente.posicao + dp, largura, componente.id, padraoDaPeca(p));
+  const linhas = linhasDoModelo(dados.modelo);
+  const nema = dados.modelo.padrao === "NEMA" && padraoDaPeca(p) === "NEMA";
 
   const alternarFase = (f: Fase) => {
     let fases = componente.fases.includes(f) ? componente.fases.filter((x) => x !== f) : [...componente.fases, f];
@@ -165,26 +168,45 @@ export function EditorComponente({
       )}
 
       <div className="space-y-1.5">
-        <span className="label">Posição no trilho</span>
+        <span className="label">Posição no quadro</span>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, -1)} onClick={() => mover(0, -1)} aria-label="Mover para a esquerda">
-            <ArrowLeft className="size-4" />
-          </button>
-          <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, 1)} onClick={() => mover(0, 1)} aria-label="Mover para a direita">
-            <ArrowRight className="size-4" />
-          </button>
-          {dados.modelo.fileiras > 1 && (
+          {nema ? (
             <>
-              <button className="btn btn-secondary p-2.5" disabled={!podeMover(-1, 0)} onClick={() => mover(-1, 0)} aria-label="Fileira de cima">
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, -1)} onClick={() => mover(0, -1)} aria-label="Subir na coluna">
                 <ArrowUp className="size-4" />
               </button>
-              <button className="btn btn-secondary p-2.5" disabled={!podeMover(1, 0)} onClick={() => mover(1, 0)} aria-label="Fileira de baixo">
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, 1)} onClick={() => mover(0, 1)} aria-label="Descer na coluna">
                 <ArrowDown className="size-4" />
               </button>
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(-1, 0)} onClick={() => mover(-1, 0)} aria-label="Coluna da esquerda">
+                <ArrowLeft className="size-4" />
+              </button>
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(1, 0)} onClick={() => mover(1, 0)} aria-label="Coluna da direita">
+                <ArrowRight className="size-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, -1)} onClick={() => mover(0, -1)} aria-label="Mover para a esquerda">
+                <ArrowLeft className="size-4" />
+              </button>
+              <button className="btn btn-secondary p-2.5" disabled={!podeMover(0, 1)} onClick={() => mover(0, 1)} aria-label="Mover para a direita">
+                <ArrowRight className="size-4" />
+              </button>
+              {linhas.length > 1 && (
+                <>
+                  <button className="btn btn-secondary p-2.5" disabled={!podeMover(-1, 0)} onClick={() => mover(-1, 0)} aria-label="Trilho de cima">
+                    <ArrowUp className="size-4" />
+                  </button>
+                  <button className="btn btn-secondary p-2.5" disabled={!podeMover(1, 0)} onClick={() => mover(1, 0)} aria-label="Trilho de baixo">
+                    <ArrowDown className="size-4" />
+                  </button>
+                </>
+              )}
             </>
           )}
           <span className="self-center text-sm text-muted">
-            Fileira {componente.fileira + 1}, módulo {componente.posicao + 1}
+            {linhas[componente.fileira]?.nome ?? `Trilho ${componente.fileira + 1}`}, {nema ? "posição" : "módulo"} {componente.posicao + 1}
           </span>
         </div>
       </div>

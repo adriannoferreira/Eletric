@@ -30,6 +30,8 @@ import {
 import { ListaAlertas } from "./alertas";
 import { BlocoDemanda } from "./projeto-blocos";
 import { QuadroVisual } from "./quadro-visual";
+import { SeletorCaixa } from "./seletor-caixa";
+import { capacidadeTotal, descreverModelo } from "@/lib/eletrica/caixas";
 
 const ETAPAS = ["Obra", "Ambientes", "Cargas", "Revisão"] as const;
 const RASCUNHO = "eletric:rascunho-projeto";
@@ -69,6 +71,7 @@ export function AssistenteProjeto({
 }) {
   const router = useRouter();
   const [etapa, setEtapa] = useState(0);
+  const [trocandoCaixa, setTrocandoCaixa] = useState(false);
   const [nome, setNome] = useState(nomeInicial);
   const [clienteId, setClienteId] = useState<number | null>(clienteInicial);
   const [projeto, setProjeto] = useState<ProjetoObra>(() => projetoInicial ?? projetoVazio());
@@ -317,6 +320,29 @@ export function AssistenteProjeto({
               <input type="checkbox" checked={projeto.obra.entradaAerea} onChange={(e) => setObra({ entradaAerea: e.target.checked })} className="size-5 accent-[var(--accent)]" />
               Entrada de energia aérea (DPS exigido)
             </label>
+            <div className="space-y-2 rounded-xl bg-surface-2 p-3 md:col-span-2">
+              <p className="text-sm font-medium">Caixa do quadro (o app escolhe o menor tamanho que caiba com a reserva)</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <select value={projeto.obra.caixaInstalacao} onChange={(e) => setObra({ caixaInstalacao: e.target.value as Obra["caixaInstalacao"], caixaId: null })} className="input" aria-label="Instalação da caixa">
+                  <option value="embutir">De embutir</option>
+                  <option value="sobrepor">De sobrepor</option>
+                </select>
+                <select value={projeto.obra.caixaMaterial} onChange={(e) => setObra({ caixaMaterial: e.target.value as Obra["caixaMaterial"], caixaId: null })} className="input" aria-label="Material da caixa">
+                  <option value="pvc">PVC / termoplástico</option>
+                  <option value="metalico">Metálica</option>
+                </select>
+                <select value={projeto.obra.caixaIP} onChange={(e) => setObra({ caixaIP: e.target.value as Obra["caixaIP"], caixaId: null })} className="input" aria-label="Grau de proteção">
+                  <option value="IP40">IP40 — interno</option>
+                  <option value="IP54">IP54 — poeira/respingos</option>
+                  <option value="IP65">IP65 — externo/úmido</option>
+                </select>
+              </div>
+              {projeto.obra.caixaId && (
+                <p className="text-xs text-muted">
+                  Caixa fixa escolhida na revisão. <button className="underline" onClick={() => setObra({ caixaId: null })}>Voltar para escolha automática</button>
+                </p>
+              )}
+            </div>
             <Campo rotulo="Observações da obra" className="md:col-span-2">
               <textarea value={projeto.obra.observacoes} onChange={(e) => setObra({ observacoes: e.target.value })} rows={2} className="input" />
             </Campo>
@@ -512,8 +538,27 @@ export function AssistenteProjeto({
               </div>
               <div className="card overflow-hidden">
                 <h3 className="p-4 pb-2 font-semibold">
-                  Quadro gerado — {resultado.dados.modelo.fileiras * resultado.dados.modelo.modulosPorFileira} módulos, {resultado.dados.circuitos.length} circuitos
+                  Quadro gerado — {capacidadeTotal(resultado.dados.modelo)} módulos, {resultado.dados.circuitos.length} circuitos
                 </h3>
+                <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-sm">
+                  <span className="text-muted">Caixa: {descreverModelo(resultado.dados.modelo)}</span>
+                  <button className="btn btn-secondary py-1.5" onClick={() => setTrocandoCaixa((v) => !v)}>
+                    {trocandoCaixa ? "Fechar" : "Trocar caixa"}
+                  </button>
+                </div>
+                {trocandoCaixa && (
+                  <div className="border-t border-border p-4">
+                    <SeletorCaixa
+                      valor={resultado.dados.modelo}
+                      minimo={resultado.analise.modulosUsados}
+                      aoMudar={(m) => {
+                        setObra({ caixaId: m.caixaId, caixaInstalacao: m.instalacao, caixaMaterial: m.material, caixaIP: m.ip });
+                        setTrocandoCaixa(false);
+                      }}
+                    />
+                    <p className="mt-2 text-xs text-muted">Medidas personalizadas e caixas NEMA: ajuste depois no construtor (Configurar quadro).</p>
+                  </div>
+                )}
                 <div className="overflow-x-auto bg-surface-2 p-4">
                   <div className="mx-auto w-max">
                     <QuadroVisual dados={resultado.dados} escala={0.7} />

@@ -26,9 +26,17 @@ export interface Peca {
   ucV?: number;
   imaxKa?: number;
   norma: string;
+  /** Padrão de montagem: DIN (trilho 35 mm) ou NEMA (plug-in no barramento). Padrão: DIN. */
+  padrao?: "DIN" | "NEMA";
 }
 
 export const MM_POR_MODULO = 18;
+/** Passo de uma posição NEMA (1 polo ≈ 1 polegada). */
+export const MM_POR_POSICAO_NEMA = 25.4;
+
+export function padraoDaPeca(p: Peca) {
+  return p.padrao ?? "DIN";
+}
 
 /** Linhas de referência — especificações a conferir no datasheet do fabricante. */
 export const REFERENCIAS_FABRICANTES: Record<TipoPeca, string[]> = {
@@ -135,7 +143,36 @@ function seccionadoras(): Peca[] {
   return lista;
 }
 
-export const PECAS: Peca[] = [...disjuntores(), ...drs(), ...dpss(), ...seccionadoras()];
+/**
+ * Disjuntores padrão NEMA (plug-in no barramento, 1 posição ≈ 25,4 mm por polo).
+ * Correntes usuais de mercado; Icn e característica de disparo variam — conferir
+ * datasheet. A característica é tratada como "C" pelo motor (uso geral).
+ */
+function nema(): Peca[] {
+  const correntes: Record<number, number[]> = {
+    1: [10, 15, 20, 25, 30, 35, 40, 50, 60, 70],
+    2: [10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 90, 100],
+    3: [15, 20, 25, 30, 35, 40, 50, 60, 70, 90, 100],
+  };
+  const lista: Peca[] = [];
+  for (const polos of [1, 2, 3])
+    for (const In of correntes[polos])
+      lista.push({
+        id: `nema-${polos}p-${In}`,
+        tipo: "disjuntor",
+        nome: `Disjuntor NEMA ${polos}P ${In} A`,
+        rotulo: `${In}A`,
+        descricao: `Termomagnético padrão NEMA (plug-in no barramento) ${polos} polo(s), ${In} A, Icn típica 3–5 kA — conferir datasheet. Ocupa ${polos} posição(ões) da coluna.`,
+        polos,
+        modulos: polos,
+        correnteNominal: In,
+        norma: "NBR NM 60898 / UL 489 (conferir fabricante)",
+        padrao: "NEMA",
+      });
+  return lista;
+}
+
+export const PECAS: Peca[] = [...disjuntores(), ...drs(), ...dpss(), ...seccionadoras(), ...nema()];
 const POR_ID = new Map(PECAS.map((p) => [p.id, p]));
 
 export function peca(id: string): Peca | undefined {
@@ -147,23 +184,18 @@ export function modulosOcupados(p: Peca) {
   return Math.ceil(p.modulos);
 }
 
+/** Largura e padrão de uma peça (para trocar de caixa). */
+export function larguraPeca(id: string) {
+  const p = peca(id);
+  return p ? { modulos: modulosOcupados(p), padrao: padraoDaPeca(p) } : undefined;
+}
+
 export const NOME_TIPO_PECA: Record<TipoPeca, string> = {
   disjuntor: "Disjuntores",
   dr: "DR (diferencial residual)",
   dps: "DPS (surtos)",
   seccionadora: "Seccionadoras",
 };
-
-/** Modelos de caixa de quadro comuns no mercado (conferir dimensões com o fabricante). */
-export const MODELOS_QUADRO = [
-  { id: "6", nome: "6 módulos DIN", fileiras: 1, modulosPorFileira: 6 },
-  { id: "12", nome: "12 módulos DIN", fileiras: 1, modulosPorFileira: 12 },
-  { id: "18", nome: "18 módulos DIN", fileiras: 1, modulosPorFileira: 18 },
-  { id: "24", nome: "24 módulos DIN (2 × 12)", fileiras: 2, modulosPorFileira: 12 },
-  { id: "36", nome: "36 módulos DIN (2 × 18)", fileiras: 2, modulosPorFileira: 18 },
-  { id: "48", nome: "48 módulos DIN (4 × 12)", fileiras: 4, modulosPorFileira: 12 },
-  { id: "54", nome: "54 módulos DIN (3 × 18)", fileiras: 3, modulosPorFileira: 18 },
-] as const;
 
 /** Acessórios internos do quadro (entram na lista de materiais). */
 export const ACESSORIOS = {
