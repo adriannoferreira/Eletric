@@ -107,6 +107,8 @@ export const CircuitoSchema = z.object({
   secaoAdotada: z.number().nullable().catch(null),
   /** DR (componente) que protege este circuito. */
   drId: z.string().nullable().catch(null),
+  /** Ambientes (ids do projeto da obra) atendidos por este circuito. */
+  ambienteIds: z.array(z.string()).catch([]),
 });
 export type Circuito = z.infer<typeof CircuitoSchema>;
 
@@ -338,6 +340,24 @@ export const LigacoesConfigSchema = z.object({
 });
 export type LigacoesConfig = z.infer<typeof LigacoesConfigSchema>;
 
+/** Ajustes e progresso da lista de pontos por ambiente. */
+export const PontosConfigSchema = z.object({
+  /** Por ambiente (chave da lista): interruptor e quantidades ajustadas pelo usuário. */
+  ajustes: z
+    .record(
+      z.string(),
+      z.object({
+        interruptor: z.enum(["simples", "paralelo", "intermediario"]).nullable().catch(null),
+        interruptores: z.number().int().min(0).nullable().catch(null),
+        pontosLuz: z.number().int().min(0).nullable().catch(null),
+      }),
+    )
+    .catch({}),
+  /** Itens do checklist de execução já feitos (ids). */
+  feitos: z.array(z.string()).catch([]),
+});
+export type PontosConfig = z.infer<typeof PontosConfigSchema>;
+
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
   alimentacao: AlimentacaoSchema.catch(AlimentacaoSchema.parse({})),
@@ -359,6 +379,8 @@ export const QuadroDadosSchema = z.object({
   manutencao: ManutencaoSchema.nullable().catch(null),
   /** Cores, ajustes e progresso das ligações internas (null = tudo automático). */
   ligacoes: LigacoesConfigSchema.nullable().catch(null),
+  /** Ajustes e checklist da lista de pontos por ambiente. */
+  pontos: PontosConfigSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -389,6 +411,7 @@ export function novoQuadro(
     art: null,
     manutencao: null,
     ligacoes: null,
+    pontos: null,
   };
 }
 

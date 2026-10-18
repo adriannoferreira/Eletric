@@ -218,6 +218,8 @@ export function ligacaoDaCarga(c: Pick<Carga, "tensaoV" | "trifasico">, rede: { 
 }
 
 interface Agrupavel {
+  /** Ambiente de origem (id do projeto da obra). */
+  ambienteId?: string;
   nome: string;
   local: Local;
   va: number;
@@ -255,6 +257,10 @@ function agrupar(itens: Agrupavel[], limiteVA: number, maxPontos = Infinity) {
   return grupos;
 }
 
+function idsAmbientes(g: Agrupavel[]) {
+  return [...new Set(g.map((x) => x.ambienteId).filter((x): x is string => !!x))];
+}
+
 function nomeGrupo(prefixo: string, g: Agrupavel[]) {
   const nomes = [...new Set(g.map((x) => x.nome))];
   return `${prefixo} — ${nomes.length > 3 ? `${nomes.slice(0, 3).join(", ")}…` : nomes.join(", ")}`;
@@ -282,7 +288,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
   const luz = agrupar(
     prev
       .filter((x) => x.luzVA > 0)
-      .map((x) => ({ nome: x.ambiente.nome, local: x.local, va: x.luzVA, pontos: 1, distancia: x.ambiente.distanciaM })),
+      .map((x) => ({ ambienteId: x.ambiente.id, nome: x.ambiente.nome, local: x.local, va: x.luzVA, pontos: 1, distancia: x.ambiente.distanciaM })),
     LIMITE_ILUMINACAO_A * v,
   );
   luz.forEach((g, i) =>
@@ -297,6 +303,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
         ligacao: "FN",
         comprimentoM: Math.max(...g.map((x) => x.distancia)),
         quantidadePontos: g.reduce((s, x) => s + x.pontos, 0),
+        ambienteIds: idsAmbientes(g),
       }),
       grupoDemanda: "iluminacao_tug",
       alertas: [],
@@ -305,6 +312,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
 
   // TUG — ambientes com circuito próprio (cozinha, copa, área de serviço, lavanderia)
   const tug = (x: PrevisaoAmbiente): Agrupavel => ({
+    ambienteId: x.ambiente.id,
     nome: x.ambiente.nome,
     local: x.local,
     va: x.tomadasVA,
@@ -325,6 +333,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
           ligacao: "FN",
           comprimentoM: x.ambiente.distanciaM,
           quantidadePontos: g.reduce((s, y) => s + y.pontos, 0),
+          ambienteIds: [x.ambiente.id],
         }),
         grupoDemanda: "iluminacao_tug",
         alertas: [],
@@ -350,6 +359,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
         ligacao: "FN",
         comprimentoM: Math.max(...g.map((x) => x.distancia)),
         quantidadePontos: g.reduce((s, x) => s + x.pontos, 0),
+        ambienteIds: idsAmbientes(g),
       }),
       grupoDemanda: "iluminacao_tug",
       alertas: [],
@@ -373,6 +383,7 @@ export function dividirCircuitos(p: ProjetoObra): CircuitoGerado[] {
           ligacao,
           comprimentoM: amb?.distanciaM ?? 10,
           quantidadePontos: 1,
+          ambienteIds: amb ? [amb.id] : [],
         }),
         grupoDemanda: presetCarga(c.tipo).grupo,
         alertas: alerta ? [alerta] : [],
@@ -760,6 +771,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
     art: null,
     manutencao: null,
     ligacoes: null,
+    pontos: null,
   });
   return {
     dados: {
@@ -777,6 +789,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
       art: null,
       manutencao: null,
       ligacoes: null,
+      pontos: null,
     },
     demanda,
     alertas,
