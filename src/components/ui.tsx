@@ -17,7 +17,7 @@ export function Cabecalho({
   ajuda?: React.ReactNode;
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <header className="mb-5 flex items-start justify-between gap-3">
       <div className="flex min-w-0 items-start gap-2">
         {voltar && (
           <Link href={voltar} className="btn btn-ghost -ml-2 p-2" aria-label="Voltar">
@@ -32,7 +32,7 @@ export function Cabecalho({
           {subtitulo && <p className="mt-0.5 truncate text-sm text-muted">{subtitulo}</p>}
         </div>
       </div>
-      {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}
+      {acoes && <div className="flex shrink-0 flex-wrap justify-end gap-2">{acoes}</div>}
     </header>
   );
 }

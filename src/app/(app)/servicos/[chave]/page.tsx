@@ -54,8 +54,10 @@ export default async function GuiaPage({ params }: PageProps<"/servicos/[chave]"
             <Ajuda titulo="Responsável técnico">{g.exigeResponsavel}</Ajuda>
           </span>
         )}
-        {g.normas.slice(0, 3).map((n) => (
-          <Ref key={n} norma={n} />
+        {g.normas.slice(0, 2).map((n) => (
+          <Ref key={n} norma={n.split("(")[0].replace(/^ABNT\s+/, "").trim()}>
+            <p>{n}</p>
+          </Ref>
         ))}
         {g.conferir?.length ? <Conferir itens={g.conferir} /> : null}
       </div>
