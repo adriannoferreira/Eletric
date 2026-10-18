@@ -278,19 +278,19 @@ export function inferirVariante(nome: string): Especificacao | null {
       atributos: limparAtributos("cabo_flexivel", { secao: secao ? nr(secao) : undefined, cor, tensaoV: tensao }),
     };
   }
-  if (/eletroduto/.test(n)) {
+  if (/^eletroduto/.test(n)) {
     const d = n.match(/(\d+ \d\/\d|\d\/\d|\d+)"/)?.[1] ?? n.match(/\b(\d{2}) ?mm\b/)?.[1];
     return { familia: "eletroduto_corrugado", atributos: limparAtributos("eletroduto_corrugado", { diametro: d ? `${d}"`.replace(/(\d{2})"$/, "$1 mm") : undefined }) };
   }
-  if (/\btomada\b/.test(n)) {
+  if (/^tomada\b/.test(n)) {
     const c = n.match(/\b(10|20) ?a\b/)?.[1];
     return { familia: "tomada", atributos: limparAtributos("tomada", { corrente: c, padrao: /2p ?\+ ?t/.test(n) ? "2P+T" : undefined }) };
   }
-  if (/\binterruptor\b/.test(n) && !/seccionador|diferencial/.test(n)) {
+  if (/^interruptor\b/.test(n) && !/seccionador|diferencial/.test(n)) {
     const modelo = /intermediario/.test(n) ? "intermediario" : /paralelo|three ?way/.test(n) ? "paralelo" : /simples/.test(n) ? "simples" : undefined;
     return { familia: "interruptor", atributos: limparAtributos("interruptor", { modelo }) };
   }
-  if (/\bhaste\b/.test(n)) {
+  if (/^haste\b/.test(n)) {
     const d = n.match(/(\d\/\d)"/)?.[1];
     const c = n.match(/x ?(\d(?:[,.]\d+)?) ?m\b/)?.[1];
     return { familia: "haste", atributos: limparAtributos("haste", { diametro: d ? `${d}"` : undefined, comprimentoM: c ? nr(c) : undefined }) };

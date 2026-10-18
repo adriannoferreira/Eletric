@@ -34,6 +34,11 @@ describe("inferirVariante", () => {
     expect(e?.familia).toBe("disjuntor_din");
     expect(especificacaoCompleta(e)).toBe(false);
   });
+  it("acessórios não viram a família da peça principal", () => {
+    expect(inferirVariante("Conector para haste de aterramento")).toBeNull();
+    expect(inferirVariante("Caixa 4x2 de embutir")).toBeNull();
+    expect(inferirVariante("Bucha e arruela para eletroduto PVC 3/4")).toBeNull();
+  });
   it("DR, DPS e cabos", () => {
     expect(inferirVariante("DR 2P 40 A 30 mA")?.atributos).toEqual({ polos: 2, corrente: 40, idnMa: 30 });
     expect(inferirVariante("DPS classe II 275 V 20 kA")?.atributos).toEqual({ classe: "II", ucV: 275, imaxKa: 20 });
