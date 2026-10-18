@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ListaAlertas } from "@/components/quadro/alertas";
-import { Conferir, Ref } from "@/components/divulgacao";
+import { Conferir, MaisOpcoes, Ref } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import {
   capacidadeCorrigida,
@@ -147,25 +147,29 @@ function CalcCabo() {
         <Campo rotulo="Potência (W)">
           <input className="input" inputMode="decimal" value={potencia} onChange={(e) => setPotencia(e.target.value)} />
         </Campo>
-        <Campo rotulo="Fator de potência">
-          <input className="input" inputMode="decimal" value={fp} onChange={(e) => setFp(e.target.value)} />
-        </Campo>
         <Tensao ligacao={ligacao} setLigacao={setLigacao} tensao={tensao} setTensao={setTensao} />
         <Campo rotulo="Comprimento (m)">
           <input className="input" inputMode="decimal" value={comprimento} onChange={(e) => setComprimento(e.target.value)} />
         </Campo>
-        <Campo rotulo="Método de instalação" className="sm:col-span-2 lg:col-span-3">
-          <select className="input" value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
-            {METODOS.map((m) => <option key={m} value={m}>{DESCRICAO_METODO[m]}</option>)}
-          </select>
-        </Campo>
-        <Campo rotulo="Circuitos no mesmo eletroduto">
-          <input className="input" inputMode="numeric" value={agrupados} onChange={(e) => setAgrupados(e.target.value)} />
-        </Campo>
-        <Campo rotulo="Temperatura ambiente (°C)">
-          <input className="input" inputMode="decimal" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} />
-        </Campo>
       </div>
+      <MaisOpcoes rotulo="Instalação, agrupamento e temperatura">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Campo rotulo="Método de instalação" className="sm:col-span-2 lg:col-span-3">
+            <select className="input" value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
+              {METODOS.map((m) => <option key={m} value={m}>{DESCRICAO_METODO[m]}</option>)}
+            </select>
+          </Campo>
+          <Campo rotulo="Circuitos no mesmo eletroduto">
+            <input className="input" inputMode="numeric" value={agrupados} onChange={(e) => setAgrupados(e.target.value)} />
+          </Campo>
+          <Campo rotulo="Temperatura ambiente (°C)">
+            <input className="input" inputMode="decimal" value={temperatura} onChange={(e) => setTemperatura(e.target.value)} />
+          </Campo>
+          <Campo rotulo="Fator de potência">
+            <input className="input" inputMode="decimal" value={fp} onChange={(e) => setFp(e.target.value)} />
+          </Campo>
+        </div>
+      </MaisOpcoes>
       <Resultado
         itens={[
           ["Corrente (Ib)", `${fmt(d.ib, 1)} A`],
