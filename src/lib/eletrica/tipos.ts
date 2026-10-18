@@ -47,10 +47,22 @@ export const AlimentacaoSchema = z.object({
 });
 export type Alimentacao = z.infer<typeof AlimentacaoSchema>;
 
+/**
+ * Caixa do quadro. DIN: `fileiras` trilhos × `modulosPorFileira` módulos de 18 mm.
+ * NEMA: `fileiras` colunas de disjuntores encaixados no barramento × `modulosPorFileira`
+ * posições por coluna, mais um trilho DIN auxiliar opcional (`trilhoAux` módulos)
+ * para DR/DPS. `caixaId` aponta para o catálogo (src/lib/eletrica/caixas.ts);
+ * "personalizado" ou vazio = medidas livres.
+ */
 export const ModeloSchema = z.object({
-  fileiras: z.number().int().min(1).max(8).catch(1),
-  modulosPorFileira: z.number().int().min(4).max(36).catch(12),
+  fileiras: z.number().int().min(1).max(10).catch(1),
+  modulosPorFileira: z.number().int().min(2).max(36).catch(12),
   instalacao: z.enum(["embutir", "sobrepor"]).catch("embutir"),
+  caixaId: z.string().nullable().catch(null),
+  padrao: z.enum(["DIN", "NEMA"]).catch("DIN"),
+  material: z.enum(["pvc", "metalico"]).catch("pvc"),
+  ip: z.enum(["IP40", "IP54", "IP65"]).catch("IP40"),
+  trilhoAux: z.number().int().min(0).max(24).catch(0),
 });
 export type ModeloQuadro = z.infer<typeof ModeloSchema>;
 
