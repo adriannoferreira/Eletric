@@ -94,12 +94,90 @@ export type Circuito = z.infer<typeof CircuitoSchema>;
 
 export const VERSAO_QUADRO = 1;
 
+// ---------------------------------------------------------------------------
+// Dados da obra (gerador de projeto)
+// ---------------------------------------------------------------------------
+
+/** Tipos de ambiente do gerador de projeto → local usado pelo motor (DR etc.). */
+export const TIPOS_AMBIENTE = {
+  sala: { nome: "Sala", local: "sala" },
+  quarto: { nome: "Quarto / suíte", local: "quarto" },
+  cozinha: { nome: "Cozinha", local: "cozinha" },
+  copa: { nome: "Copa / copa-cozinha", local: "copa" },
+  banheiro: { nome: "Banheiro", local: "banheiro" },
+  area_servico: { nome: "Área de serviço", local: "area_servico" },
+  lavanderia: { nome: "Lavanderia", local: "lavanderia" },
+  varanda: { nome: "Varanda / sacada", local: "varanda" },
+  garagem: { nome: "Garagem", local: "garagem" },
+  area_externa: { nome: "Área externa / quintal", local: "area_externa" },
+  escritorio: { nome: "Escritório", local: "escritorio" },
+  corredor: { nome: "Corredor / hall", local: "corredor" },
+  outro: { nome: "Outro", local: "outro" },
+} as const satisfies Record<string, { nome: string; local: Local }>;
+export type TipoAmbiente = keyof typeof TIPOS_AMBIENTE;
+
+export const AmbienteSchema = z.object({
+  id: z.string().catch(() => novoId("a")),
+  nome: z.string().catch("Ambiente"),
+  tipo: z.enum(chaves(TIPOS_AMBIENTE)).catch("outro"),
+  areaM2: z.number().min(0).catch(0),
+  /** 0 = estimar pelo quadrado da área. */
+  perimetroM: z.number().min(0).catch(0),
+  /** Distância aproximada do ambiente até o quadro (comprimento do circuito). */
+  distanciaM: z.number().min(0).catch(10),
+  /** Ajustes manuais (null = usar o mínimo da NBR 5410 9.5.2). */
+  luzVA: z.number().min(0).nullable().catch(null),
+  tomadas: z.number().int().min(0).nullable().catch(null),
+});
+export type Ambiente = z.infer<typeof AmbienteSchema>;
+
+export const CargaSchema = z.object({
+  id: z.string().catch(() => novoId("t")),
+  nome: z.string().catch("Equipamento"),
+  /** Id do preset (chuveiro, ar…) ou "outro". */
+  tipo: z.string().catch("outro"),
+  potenciaW: z.number().min(0).catch(0),
+  fatorPotencia: z.number().min(0.1).max(1).catch(1),
+  tensaoV: z.number().positive().catch(220),
+  trifasico: z.boolean().catch(false),
+  quantidade: z.number().int().min(1).catch(1),
+  ambienteId: z.string().nullable().catch(null),
+});
+export type Carga = z.infer<typeof CargaSchema>;
+
+export const ObraSchema = z.object({
+  tipoImovel: z.enum(["casa", "sobrado", "apartamento", "comercio", "outro"]).catch("casa"),
+  concessionaria: z.string().catch("outra"),
+  tensoes: z.enum(["127/220", "220/380"]).catch("127/220"),
+  esquema: z.enum(["TN-S", "TN-C-S", "TT"]).catch("TN-C-S"),
+  fornecimentoExistente: z.enum(["desconhecido", "monofasico", "bifasico", "trifasico"]).catch("desconhecido"),
+  disjuntorExistenteA: z.number().min(0).nullable().catch(null),
+  /** Entrada de energia por linha aérea (DPS exigido — 5.4.2.1). */
+  entradaAerea: z.boolean().catch(true),
+  metodo: z.enum(METODOS).catch("B1"),
+  /** Nº típico de circuitos por eletroduto (Tabela 42). */
+  agrupamento: z.number().int().min(1).catch(1),
+  /** Proteger todos os circuitos com DR (recomendado) ou só os obrigatórios. */
+  drEmTodos: z.boolean().catch(true),
+  observacoes: z.string().catch(""),
+});
+export type Obra = z.infer<typeof ObraSchema>;
+
+export const ProjetoObraSchema = z.object({
+  obra: ObraSchema.catch(ObraSchema.parse({})),
+  ambientes: z.array(AmbienteSchema).catch([]),
+  cargas: z.array(CargaSchema).catch([]),
+});
+export type ProjetoObra = z.infer<typeof ProjetoObraSchema>;
+
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
   alimentacao: AlimentacaoSchema.catch(AlimentacaoSchema.parse({})),
   modelo: ModeloSchema.catch(ModeloSchema.parse({})),
   componentes: z.array(ComponenteSchema).catch([]),
   circuitos: z.array(CircuitoSchema).catch([]),
+  /** Dados da obra quando o quadro foi gerado pelo assistente de projeto. */
+  projeto: ProjetoObraSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -121,6 +199,7 @@ export function novoQuadro(
     modelo: ModeloSchema.parse(modelo),
     componentes: [],
     circuitos: [],
+    projeto: null,
   };
 }
 
