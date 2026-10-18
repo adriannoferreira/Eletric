@@ -3,6 +3,7 @@
 import {
   Boxes,
   Check,
+  ClipboardList,
   ChevronLeft,
   Copy,
   ExternalLink,
@@ -32,6 +33,7 @@ import {
   mudarStatus,
   salvarOrcamento,
 } from "../actions";
+import { criarOSDeOrcamento } from "@/app/(app)/os/actions";
 
 type Item = DadosOrcamento["itens"][number] & { chave: string };
 
@@ -167,6 +169,9 @@ export function EditorOrcamento({
               <button onClick={() => iniciar(() => duplicarOrcamento(o.id))} className="flex w-full items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
                 <Copy className="size-4" /> Duplicar
               </button>
+              <button onClick={() => iniciar(() => criarOSDeOrcamento(o.id))} className="flex w-full items-center gap-2 px-4 py-3 text-sm hover:bg-surface-2">
+                <ClipboardList className="size-4" /> Ordem de serviço
+              </button>
               <button
                 onClick={() => confirm("Excluir este orçamento?") && iniciar(() => excluirOrcamento(o.id))}
                 className="flex w-full items-center gap-2 px-4 py-3 text-sm text-danger hover:bg-surface-2"
@@ -194,6 +199,18 @@ export function EditorOrcamento({
           </button>
         ))}
       </div>
+
+      {(o.status === "aprovado" || o.status === "executado") && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl bg-ok-soft p-4">
+          <ClipboardList className="size-5 shrink-0 text-ok" />
+          <p className="min-w-0 flex-1 text-sm font-medium text-ok">
+            Orçamento aprovado. Agende a execução numa ordem de serviço.
+          </p>
+          <button onClick={() => iniciar(() => criarOSDeOrcamento(o.id))} disabled={salvando} className="btn btn-primary">
+            Abrir ordem de serviço
+          </button>
+        </div>
+      )}
 
       {/* Itens */}
       <section className="mb-4">
