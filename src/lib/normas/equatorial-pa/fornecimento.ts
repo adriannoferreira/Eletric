@@ -173,7 +173,7 @@ export function categoriaAtendimento(
 
   if (cargaInstaladaKW > 75) {
     bloqueios.push(
-      `Carga instalada de ${cargaInstaladaKW.toFixed(1)} kW acima de 75 kW: fornecimento em média tensão (NT.00002), fora do padrão de baixa tensão.`,
+      `Carga instalada de ${cargaInstaladaKW.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kW acima de 75 kW: fornecimento em média tensão (NT.00002), fora do padrão de baixa tensão.`,
     );
     referencias.add(ref("NT.00001", "item 6.2.1"));
     return {
@@ -190,7 +190,7 @@ export function categoriaAtendimento(
   }
 
   let tipo: TipoLigacao = cargaInstaladaKW <= 10 ? "monofasico" : cargaInstaladaKW <= 15 ? "bifasico" : "trifasico";
-  motivos.push(`Carga instalada de ${cargaInstaladaKW.toFixed(2)} kW → ${ROTULO_LIGACAO[tipo].toLowerCase()} pela faixa de carga (${LIGACOES_PA[tipo].ref}).`);
+  motivos.push(`Carga instalada de ${cargaInstaladaKW.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kW → ${ROTULO_LIGACAO[tipo].toLowerCase()} pela faixa de carga (${LIGACOES_PA[tipo].ref}).`);
 
   const sobe = (novo: TipoLigacao, motivo: string, referencia: string) => {
     if (ordem.indexOf(novo) > ordem.indexOf(tipo)) {

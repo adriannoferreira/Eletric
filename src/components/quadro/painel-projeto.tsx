@@ -1,7 +1,7 @@
 "use client";
 
 import { listaMateriaisCompleta } from "@/lib/eletrica/ligacoes";
-import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Sparkles, Tags } from "lucide-react";
+import { ClipboardList, FileDown, GitBranch, Loader2, Pencil, Printer, Save, Sparkles, Tags, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { salvarMemorial } from "@/app/(app)/quadros/actions";
@@ -12,6 +12,9 @@ import { peca } from "@/lib/eletrica/pecas";
 import type { QuadroDados } from "@/lib/eletrica/tipos";
 import { CONCESSIONARIAS } from "@/lib/eletrica/concessionarias";
 import { concessionariaDoQuadro } from "@/lib/eletrica/equatorial";
+import { dadosMemorialDoQuadro } from "@/lib/eletrica/memorial-quadro";
+import { EXIGENCIAS_DOCUMENTOS, montarMemorialDescritivo, preencherMemorial } from "@/lib/normas/equatorial-pa";
+import type { ClienteResumo, PerfilResumo } from "./laudo-art";
 import { ListaMateriais } from "./materiais";
 import { BlocoPadraoEquatorial } from "./padrao-equatorial";
 import { BlocoDemanda, demandaDoQuadro, descreverObra, ListaSeguranca, TabelaCargas } from "./projeto-blocos";
@@ -50,6 +53,8 @@ export function PainelProjeto({
   aoMudarConcessionaria,
   aoVerUnifilar,
   botaoOrcamento,
+  cliente,
+  perfil,
 }: {
   id: number;
   nome: string;
@@ -60,12 +65,72 @@ export function PainelProjeto({
   aoMudarConcessionaria: (id: string) => void;
   aoVerUnifilar: () => void;
   botaoOrcamento: React.ReactNode;
+  cliente: ClienteResumo;
+  perfil: PerfilResumo;
 }) {
   const demanda = useMemo(() => demandaDoQuadro(dados), [dados]);
   const materiais = useMemo(() => listaMateriaisCompleta(dados, analise), [dados, analise]);
   const [texto, setTexto] = useState("");
   const [gerando, setGerando] = useState(false);
+  const [rascunho, setRascunho] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const memorial = gerando || texto ? texto : (dados.memorial?.texto ?? "");
+  const dadosMem = useMemo(
+    () => dadosMemorialDoQuadro({ nome, dados, analise, demanda, cliente, responsavel: perfil, art: dados.art?.numero }),
+    [nome, dados, analise, demanda, cliente, perfil],
+  );
+  const exigeFormato = !!dadosMem && (dadosMem.temGeracao || dadosMem.temRecargaVE);
+
+  /** Equatorial PA: base determinística (números do cálculo) + IA só nos trechos marcados. */
+  async function gerarEquatorial() {
+    if (!dadosMem) return;
+    setGerando(true);
+    const base = montarMemorialDescritivo(dadosMem);
+    setTexto(base.markdown);
+    const contexto = `${descreverObra(dados, demanda)}\n\n${descreverQuadro(nome, dados, analise)}`;
+    const textos: Record<string, string> = {};
+    try {
+      await Promise.all(
+        base.secoes
+          .filter((s) => s.paraIA)
+          .map(async (s) => {
+            const res = await fetch("/api/ia/gerar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                assistente: "eletrica",
+                esforco: "high",
+                pedido: `Você está redigindo UMA seção do memorial descritivo de uma instalação elétrica de baixa tensão (Equatorial Pará, NT.00001 rev. 09; ABNT NBR 5410; NR-10).\nSeção: "${s.titulo}".\nInstrução: ${s.paraIA!.instrucao}\n\nDados do projeto (use só estes números; não invente valores):\n${contexto}\n\nResponda apenas com o texto da seção, em Markdown, sem repetir o título.`,
+              }),
+            });
+            await lerStream(res, (t) => {
+              textos[s.id] = t;
+              setTexto(preencherMemorial(base.markdown, textos));
+            });
+          }),
+      );
+      const final = preencherMemorial(base.markdown, textos);
+      setTexto(final);
+      aoMudarMemorial(await salvarMemorial(id, final));
+    } catch {
+      setTexto((t) => `${t}\n\n⚠️ Sem conexão. Tente de novo.`);
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  async function salvarEdicao() {
+    if (rascunho == null) return;
+    setSalvando(true);
+    try {
+      const m = await salvarMemorial(id, rascunho);
+      aoMudarMemorial(m);
+      setTexto(m.texto);
+      setRascunho(null);
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   async function gerar() {
     setGerando(true);
@@ -168,30 +233,94 @@ export function PainelProjeto({
         <ListaMateriais itens={materiais} />
       </Secao>
 
-      <Secao titulo="Memorial descritivo (IA)">
+      <Secao titulo="Memorial descritivo">
         <div className="space-y-3">
-          <button onClick={gerar} disabled={gerando || analise.circuitos.length === 0} className="btn btn-primary">
-            {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-            {memorial ? "Gerar de novo" : "Gerar memorial descritivo com IA"}
-          </button>
-          {dados.memorial && !texto && (
+          {dadosMem && (
+            <div className="space-y-2 rounded-xl bg-info-soft p-3 text-sm text-info">
+              <p>
+                A Equatorial não exige memorial para unidade individual em baixa tensão (NT.00001, item 5.2); ele é obrigatório para
+                micro/minigeração (NT.00020, item 5.13). Sem geração, o memorial serve ao cliente, à ART/TRT e ao seu arquivo técnico.
+              </p>
+              <p className="text-xs">
+                Os números (cargas, padrão de entrada, circuitos, proteções) saem do cálculo do app; a IA redige só a descrição geral,
+                os critérios e as considerações finais.
+              </p>
+            </div>
+          )}
+          {exigeFormato && (
+            <div className="space-y-2 rounded-xl bg-warn-soft p-3 text-sm text-warn">
+              <p className="font-semibold">
+                Este quadro tem {dadosMem!.temGeracao ? "geração própria (solar)" : "carregador de veículo elétrico acima de 7,4 kW"}: o projeto
+                deve ser apresentado à Equatorial no formato exigido.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-xs">
+                {EXIGENCIAS_DOCUMENTOS.filter((e) => (dadosMem!.temGeracao ? e.ref.includes("NT.00020") : e.ref.includes("NT.00042"))).map((e, i) => (
+                  <li key={i}>
+                    {e.texto} <span className="opacity-80">({e.ref})</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs">Imprima em A4, assine, digitalize (até 5 MB) e nomeie o arquivo “Memorial Técnico Descritivo”.</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={dadosMem ? gerarEquatorial : gerar}
+              disabled={gerando || analise.circuitos.length === 0}
+              className="btn btn-primary"
+            >
+              {gerando ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {memorial ? "Gerar de novo" : "Gerar memorial descritivo"}
+            </button>
+            {memorial && !gerando && rascunho == null && (
+              <button onClick={() => setRascunho(memorial)} className="btn btn-secondary">
+                <Pencil className="size-4" /> Editar texto
+              </button>
+            )}
+            {dados.memorial && (
+              <a href={`/quadros/${id}/imprimir?doc=memorial`} target="_blank" className="btn btn-secondary">
+                <Printer className="size-4" /> Imprimir / PDF
+              </a>
+            )}
+          </div>
+          {dados.memorial && !texto && rascunho == null && (
             <p className="text-xs text-muted">
               Gerado em {new Date(dados.memorial.geradoEm).toLocaleString("pt-BR")} — sai também no PDF.
             </p>
           )}
-          {(memorial || gerando) && (
-            <div className="card p-4">
-              {memorial ? (
-                <TextoIA>{memorial}</TextoIA>
-              ) : (
-                <div className="space-y-2" aria-label="Escrevendo o memorial">
-                  <Sk className="h-4 w-1/3" />
-                  <Sk className="h-3 w-full" />
-                  <Sk className="h-3 w-11/12" />
-                  <Sk className="h-3 w-4/5" />
-                </div>
-              )}
+          {rascunho != null ? (
+            <div className="space-y-2">
+              <textarea
+                value={rascunho}
+                onChange={(e) => setRascunho(e.target.value)}
+                rows={18}
+                className="input font-mono text-sm"
+                aria-label="Texto do memorial (Markdown)"
+              />
+              <div className="flex gap-2">
+                <button onClick={salvarEdicao} disabled={salvando} className="btn btn-primary">
+                  {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Salvar memorial
+                </button>
+                <button onClick={() => setRascunho(null)} className="btn btn-ghost">
+                  <X className="size-4" /> Cancelar
+                </button>
+              </div>
             </div>
+          ) : (
+            (memorial || gerando) && (
+              <div className="card p-4">
+                {memorial ? (
+                  <TextoIA>{memorial}</TextoIA>
+                ) : (
+                  <div className="space-y-2" aria-label="Escrevendo o memorial">
+                    <Sk className="h-4 w-1/3" />
+                    <Sk className="h-3 w-full" />
+                    <Sk className="h-3 w-11/12" />
+                    <Sk className="h-3 w-4/5" />
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
       </Secao>

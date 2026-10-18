@@ -165,7 +165,7 @@ export function montarMemorialDescritivo(d: DadosMemorial): { secoes: SecaoMemor
         "| Nº | Descrição | Potência (W) | Tensão (V) | Seção (mm²) | Disjuntor | DR | Fase |",
         "|---:|---|---:|---:|---:|---|---|---|",
         ...q.circuitos.map(
-          (k) => `| ${k.numero} | ${k.descricao} | ${k.potenciaW.toLocaleString("pt-BR")} | ${k.tensaoV} | ${k.secaoMm2 ?? "—"} | ${k.disjuntor} | ${k.dr || "—"} | ${k.fase} |`,
+          (k) => `| ${k.numero} | ${k.descricao} | ${k.potenciaW.toLocaleString("pt-BR")} | ${k.tensaoV} | ${k.secaoMm2 != null ? k.secaoMm2.toLocaleString("pt-BR") : "—"} | ${k.disjuntor} | ${k.dr || "—"} | ${k.fase} |`,
         ),
       ].join("\n"),
     })),
@@ -197,7 +197,7 @@ export function montarMemorialDescritivo(d: DadosMemorial): { secoes: SecaoMemor
         `${d.responsavel.nome}${d.responsavel.registro ? ` — ${d.responsavel.registro}` : ""}`,
         `ART/TRT nº ${d.responsavel.art || "________________"}`,
         [d.responsavel.telefone, d.responsavel.email].filter(Boolean).join(" · "),
-      ].join("\n"),
+      ].join("  \n"),
     },
   ];
 

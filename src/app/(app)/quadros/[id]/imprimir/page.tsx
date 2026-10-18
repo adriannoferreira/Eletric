@@ -20,6 +20,7 @@ import { Etiquetas } from "@/components/quadro/etiquetas";
 import { AutoImprimir, BotaoImprimir, FotosLocais } from "@/components/quadro/impressao-cliente";
 import { TabelaCompras } from "@/components/quadro/lista-compras";
 import { BlocoPadraoEquatorial } from "@/components/quadro/padrao-equatorial";
+import { temGeracao, temRecargaVEAcima74 } from "@/lib/eletrica/memorial-quadro";
 import { BlocoDemanda, demandaDoQuadro, ListaSeguranca, TabelaCargas } from "@/components/quadro/projeto-blocos";
 import { QuadroVisual } from "@/components/quadro/quadro-visual";
 import { Unifilar } from "@/components/quadro/unifilar";
@@ -48,6 +49,7 @@ const DOCS = {
   manutencao: "Relatório de manutenção preventiva",
   ligacoes: "Ligações do quadro (montagem)",
   multifilar: "Diagrama multifilar",
+  memorial: "Memorial descritivo",
 } as const;
 type Doc = keyof typeof DOCS;
 
@@ -143,6 +145,27 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
       <div className="[&_svg]:h-auto [&_svg]:max-h-[180mm] [&_svg]:w-full [&_svg]:text-black">
         <Unifilar dados={dados} analise={analise} selo={selo} />
       </div>
+    );
+  } else if (doc === "memorial") {
+    const gd = temGeracao(dados) || temRecargaVEAcima74(dados);
+    conteudo = (
+      <>
+        {cab(gd ? "Memorial Técnico Descritivo" : "Memorial descritivo", q.nome)}
+        {dados.memorial ? (
+          <div className="memorial [&_h1]:hidden [&_h2]:mt-5 [&_h2]:text-base [&_h2]:font-bold">
+            <TextoIA>{dados.memorial.texto}</TextoIA>
+          </div>
+        ) : (
+          <p className="text-sm">Nenhum memorial gerado ainda. Gere na aba Projeto do quadro.</p>
+        )}
+        <RodapeDoc
+          extra={
+            gd
+              ? "Equatorial PA: documento assinado e digitalizado pelo responsável técnico, até 5 MB (NT.00020 item 5.13.1)."
+              : "A Equatorial não exige memorial para unidade individual em BT (NT.00001 item 5.2)."
+          }
+        />
+      </>
     );
   } else if (doc === "compras") {
     const lista = montarListaCompras(dados, cat, analise);

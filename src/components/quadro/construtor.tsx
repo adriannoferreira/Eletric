@@ -568,6 +568,8 @@ export function Construtor({
             alterado={alterado}
             aoMudarMemorial={(memorial) => aplicarPersistido({ memorial })}
             aoMudarConcessionaria={(concessionaria) => setDados((q) => ({ ...q, concessionaria }))}
+            cliente={cliente}
+            perfil={perfil}
             aoVerUnifilar={() => setVerUnifilar(true)}
             botaoOrcamento={
               <BotaoOrcamento
