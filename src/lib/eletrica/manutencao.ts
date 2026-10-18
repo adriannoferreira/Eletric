@@ -4,7 +4,7 @@
  * orçamento para as pendências.
  */
 import { faixaTensao, type Limite, dentroDoLimite, textoLimite } from "./inspecao";
-import { buscarPreco, type ItemCatalogoSimples, MARCA_SEM_PRECO, type ItemOrcamentoGerado } from "./orcamento-quadro";
+import { buscarPreco, type ItemCatalogoSimples, MARCA_SEM_PRECO, type ItemOrcamentoGerado, varianteDaPeca } from "./orcamento-quadro";
 import { peca } from "./pecas";
 import {
   fasesDisponiveis,
@@ -212,12 +212,12 @@ export function itensOrcamentoPendencias(
     const p = item.pecaId ? peca(item.pecaId) : undefined;
     const obs = resposta?.obs ? ` (${resposta.obs})` : "";
     if (p && (item.id.startsWith("man:temp:") || item.id.startsWith("man:dr:") || item.id.startsWith("man:dps:"))) {
-      const mat =
-        p.tipo === "disjuntor"
-          ? buscarPreco(catalogo, { tipo: "material", exige: [/disjuntor/, new RegExp(`\\b${p.polos} ?p\\b`)], prefere: [new RegExp(`curva ${p.curva?.toLowerCase()}`)] })
-          : p.tipo === "dr"
-            ? buscarPreco(catalogo, { tipo: "material", exige: [/\b(dr|idr|diferencial)\b/, new RegExp(`\\b${p.polos} ?p\\b`), new RegExp(`\\b${p.correnteNominal} ?a\\b`)] })
-            : buscarPreco(catalogo, { tipo: "material", exige: [/\bdps\b/] });
+      const v = varianteDaPeca(p.id);
+      const mat = v
+        ? buscarPreco(catalogo, { tipo: "material", exige: [], variante: v })
+        : p.tipo === "dps"
+          ? buscarPreco(catalogo, { tipo: "material", exige: [/\bdps\b/] })
+          : null;
       add("material", `${p.nome} (substituição)`, mat);
       const serv =
         p.tipo === "disjuntor"

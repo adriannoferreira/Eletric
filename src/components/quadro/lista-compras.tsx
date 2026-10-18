@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Copy, MessageCircle, Printer } from "lucide-react";
+import { Check, Copy, MessageCircle, Printer, Scale } from "lucide-react";
+import { MenuAcoes } from "@/components/divulgacao";
 import { useMemo, useState } from "react";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import { CATEGORIAS_COMPRA, type ListaCompras, montarListaCompras, textoCotacao } from "@/lib/eletrica/compras";
@@ -92,30 +93,31 @@ export function PainelCompras({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <a href={linkWhatsApp("", texto)} target="_blank" className="btn btn-whatsapp">
-          <MessageCircle className="size-4" /> Enviar pelo WhatsApp
+      <div className="flex items-center gap-2">
+        <a href={linkWhatsApp("", texto)} target="_blank" className="btn btn-whatsapp flex-1 sm:flex-none">
+          <MessageCircle className="size-4" /> Pedir cotação
         </a>
-        <button
-          className="btn btn-secondary"
-          onClick={async () => {
-            await navigator.clipboard.writeText(texto);
-            setCopiado(true);
-            setTimeout(() => setCopiado(false), 2000);
-          }}
-        >
-          <Copy className="size-4" /> {copiado ? "Copiado!" : "Copiar"}
-        </button>
-        <a href={`/quadros/${id}/imprimir?doc=compras&auto=1`} target="_blank" className="btn btn-secondary">
-          <Printer className="size-4" /> Imprimir/PDF
-        </a>
+        <MenuAcoes
+          acoes={[
+            { rotulo: "Comparar lojas", icone: <Scale className="size-4" />, href: `/catalogo/comparar?quadro=${id}` },
+            {
+              rotulo: copiado ? "Copiado!" : "Copiar lista",
+              icone: <Copy className="size-4" />,
+              onClick: async () => {
+                await navigator.clipboard.writeText(texto);
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
+              },
+            },
+            { rotulo: "Imprimir / PDF", icone: <Printer className="size-4" />, href: `/quadros/${id}/imprimir?doc=compras&auto=1`, externo: true },
+          ]}
+        />
       </div>
       <div>
         <div className="mb-1 flex justify-between text-xs text-muted">
           <span>
             Comprado: {feitas}/{lista.itens.length}
           </span>
-          <span>salvo automaticamente — sincroniza celular e notebook</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-surface-2">
           <div className="h-full bg-ok transition-all" style={{ width: `${(feitas / Math.max(1, lista.itens.length)) * 100}%` }} />

@@ -5,7 +5,7 @@
  * costumam faltar. Preços estimados pelo catálogo do eletricista.
  */
 import { analisarQuadro, type AnaliseQuadro, secaoProtecao } from "./calculo";
-import { buscarPreco, type ItemCatalogoSimples } from "./orcamento-quadro";
+import { buscarPreco, type ItemCatalogoSimples, varianteDaPeca } from "./orcamento-quadro";
 import { modulosOcupados, peca, type Peca } from "./pecas";
 import type { Fase, QuadroDados } from "./tipos";
 import { caixaDoModelo, capacidadeTotal, descreverModelo } from "./caixas";
@@ -72,6 +72,8 @@ export function montarListaCompras(
   const itens: ItemCompra[] = [];
   const preco = (exige: RegExp[], prefere: RegExp[] = []) =>
     buscarPreco(catalogo, { tipo: "material", exige, prefere })?.preco ?? null;
+  const precoCabo = (secao: number) =>
+    buscarPreco(catalogo, { tipo: "material", exige: [], variante: { familia: "cabo_flexivel", atributos: { secao } } })?.preco ?? null;
   const add = (i: Omit<ItemCompra, "total">) =>
     itens.push({ ...i, total: i.precoUnitario === null ? null : Math.round(i.precoUnitario * i.quantidade * 100) / 100 });
 
@@ -84,14 +86,11 @@ export function montarListaCompras(
     .filter((x): x is { p: Peca; n: number } => Boolean(x.p))
     .sort((a, b) => ordemTipo[a.p.tipo] - ordemTipo[b.p.tipo] || (a.p.correnteNominal ?? 0) - (b.p.correnteNominal ?? 0));
   for (const { p, n } of pecas) {
+    // Peça do construtor → variante exata do catálogo (corrente/polos/curva); sem a variante, fica sem preço.
+    const v = varianteDaPeca(p.id);
     let pu: number | null = null;
-    if (p.tipo === "disjuntor") {
-      pu = preco([/disjuntor/, new RegExp(`\\b${p.polos} ?p\\b`)], [new RegExp(`curva ${p.curva?.toLowerCase()}`), new RegExp(`\\b${p.correnteNominal} ?a\\b`)]);
-    } else if (p.tipo === "dr") {
-      pu = preco([/\b(dr|idr|diferencial)\b/, new RegExp(`\\b${p.polos} ?p\\b`), new RegExp(`\\b${p.correnteNominal} ?a\\b`)]);
-    } else if (p.tipo === "dps") {
-      pu = preco([/\bdps\b/], [new RegExp(`${p.ucV} ?v`)]);
-    }
+    if (v) pu = buscarPreco(catalogo, { tipo: "material", exige: [], variante: v })?.preco ?? null;
+    else if (p.tipo === "dps") pu = preco([/\bdps\b/], [new RegExp(`${p.ucV} ?v`)]);
     add({ chave: `peca:${p.id}`, categoria: "protecao", descricao: p.nome, especificacao: especificacaoPeca(p), quantidade: n, unidade: "un", precoUnitario: pu });
   }
 
@@ -118,7 +117,7 @@ export function montarListaCompras(
   for (const c of [...metros.values()].sort((a, b) => a.secao - b.secao || a.funcao.localeCompare(b.funcao))) {
     const m = Math.ceil(c.m * 1.1);
     const rolos = Math.ceil(m / ROLO_M);
-    const pm = preco([/cabo/, new RegExp(`(^|[^\\d,])${String(c.secao).replace(".", "[,.]")} ?mm`)]);
+    const pm = precoCabo(c.secao);
     add({
       chave: `cabo:${c.secao}:${c.funcao}:${c.cor}`,
       categoria: "cabos",
@@ -174,7 +173,7 @@ export function montarListaCompras(
       especificacao: `Cobre classe 5, 450/750 V, cor ${c.cor} (${c.funcoes.join(", ")}). Medida da lista de ligações + 20% de folga`,
       quantidade: Math.max(1, Math.ceil(c.metros * 1.2)),
       unidade: "m",
-      precoUnitario: preco([/cabo/, new RegExp(`\\b${String(c.secao).replace(".", ",")} ?mm`)]),
+      precoUnitario: precoCabo(c.secao),
     });
   }
   const nCirc = dados.circuitos.length;
