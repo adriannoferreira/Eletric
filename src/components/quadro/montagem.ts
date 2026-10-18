@@ -1,0 +1,102 @@
+import { analisarQuadro, dimensionar, tensaoDoCircuito } from "@/lib/eletrica/calculo";
+import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
+import {
+  type Circuito,
+  type Componente,
+  type Fase,
+  fasesDisponiveis,
+  novoId,
+  type QuadroDados,
+} from "@/lib/eletrica/tipos";
+
+/** Mapa de ocupação: [fileira][módulo] = id do componente ou null. */
+export function ocupacao(q: QuadroDados, ignorar?: string) {
+  const mapa: (string | null)[][] = Array.from({ length: q.modelo.fileiras }, () =>
+    Array<string | null>(q.modelo.modulosPorFileira).fill(null),
+  );
+  for (const c of q.componentes) {
+    if (c.id === ignorar) continue;
+    const p = peca(c.pecaId);
+    if (!p || !mapa[c.fileira]) continue;
+    for (let i = 0; i < modulosOcupados(p); i++) {
+      if (c.posicao + i < mapa[c.fileira].length) mapa[c.fileira][c.posicao + i] = c.id;
+    }
+  }
+  return mapa;
+}
+
+export function cabe(q: QuadroDados, fileira: number, posicao: number, largura: number, ignorar?: string) {
+  const mapa = ocupacao(q, ignorar);
+  const linha = mapa[fileira];
+  if (!linha || posicao < 0 || posicao + largura > linha.length) return false;
+  for (let i = posicao; i < posicao + largura; i++) if (linha[i] !== null) return false;
+  return true;
+}
+
+/** Primeiro espaço livre contíguo (preferindo a partir de uma posição). */
+export function primeiroEspaco(q: QuadroDados, largura: number, preferencia?: { fileira: number; posicao: number }) {
+  if (preferencia && cabe(q, preferencia.fileira, preferencia.posicao, largura)) return preferencia;
+  for (let f = 0; f < q.modelo.fileiras; f++)
+    for (let p = 0; p + largura <= q.modelo.modulosPorFileira; p++) if (cabe(q, f, p, largura)) return { fileira: f, posicao: p };
+  return null;
+}
+
+/** Fases menos carregadas para ligar um novo dispositivo de `polos` polos. */
+export function fasesSugeridas(q: QuadroDados, polos: number): Fase[] {
+  const disp = fasesDisponiveis(q.alimentacao);
+  if (polos >= disp.length) return disp.slice(0, polos);
+  const carga = analisarQuadro(q).correntePorFase;
+  return [...disp].sort((a, b) => carga[a] - carga[b]).slice(0, polos);
+}
+
+export function polosDaLigacao(c: Pick<Circuito, "ligacao">) {
+  return c.ligacao === "FN" ? 1 : c.ligacao === "FF" ? 2 : 3;
+}
+
+/** Disjuntor sugerido pelo motor: polos da ligação, In calculada, curva B para iluminação e C para o resto. */
+export function disjuntorSugerido(q: QuadroDados, c: Circuito) {
+  const d = dimensionar({
+    ...c,
+    tensaoV: tensaoDoCircuito(c.ligacao, q.alimentacao),
+  });
+  if (!d.disjuntor) return undefined;
+  const polos = polosDaLigacao(c);
+  const curva = c.tipo === "iluminacao" ? "B" : "C";
+  return peca(`dj-${polos}p-${curva}${d.disjuntor}`) ?? peca(`dj-${polos}p-C${d.disjuntor}`);
+}
+
+/** Adiciona um componente na posição dada (ou na primeira livre). Retorna o novo quadro e o id. */
+export function adicionarComponente(
+  q: QuadroDados,
+  pecaId: string,
+  onde?: { fileira: number; posicao: number },
+  extra: Partial<Componente> = {},
+): { quadro: QuadroDados; id: string } | null {
+  const p = peca(pecaId);
+  if (!p) return null;
+  const lugar = primeiroEspaco(q, modulosOcupados(p), onde);
+  if (!lugar) return null;
+  const id = novoId("k");
+  const fases = p.tipo === "dps" ? fasesSugeridas(q, 1) : fasesSugeridas(q, Math.min(p.polos, 3));
+  const comp: Componente = {
+    id,
+    pecaId,
+    fileira: lugar.fileira,
+    posicao: lugar.posicao,
+    fases,
+    circuitoId: null,
+    geral: false,
+    etiqueta: "",
+    ...extra,
+  };
+  return { quadro: { ...q, componentes: [...q.componentes, comp] }, id };
+}
+
+export const COR_FASE: Record<Fase, string> = { R: "#dc2626", S: "#111827", T: "#9ca3af" };
+
+/** Número do circuito (ordem na lista), para etiquetar o disjuntor como no quadro real. */
+export function numeroCircuito(q: QuadroDados, circuitoId: string | null) {
+  if (!circuitoId) return null;
+  const i = q.circuitos.findIndex((c) => c.id === circuitoId);
+  return i >= 0 ? i + 1 : null;
+}
