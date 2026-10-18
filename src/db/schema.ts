@@ -161,3 +161,20 @@ export type OrcamentoItem = typeof orcamentoItens.$inferSelect;
 export type Quadro = typeof quadros.$inferSelect;
 export type Equipamento = typeof equipamentos.$inferSelect;
 export type Perfil = typeof perfil.$inferSelect;
+
+/** Tarefas do plano de crescimento (aba Vendas & Marketing). */
+export const tarefasMarketing = pgTable("tarefas_marketing", {
+  id: serial("id").primaryKey(),
+  /** Identificador das tarefas sugeridas pelo app (null nas criadas pelo usuário). */
+  chave: text("chave").unique(),
+  /** 30 | 60 | 90 (dias) */
+  fase: integer("fase").notNull().default(30),
+  titulo: text("titulo").notNull(),
+  descricao: text("descricao").notNull().default(""),
+  concluida: boolean("concluida").notNull().default(false),
+  concluidaEm: timestamp("concluida_em", { withTimezone: true }),
+  ordem: integer("ordem").notNull().default(0),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TarefaMarketing = typeof tarefasMarketing.$inferSelect;
