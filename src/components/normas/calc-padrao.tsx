@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, Ban, CheckCircle2, FileText, Loader2, Plus, Printer, Trash2 } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, ChevronDown, FileText, Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { cargasDoQuadro, dadosCalculadora, gerarOrcamentoPadrao } from "@/app/(app)/normas/actions";
+import { Ajuda, Conferir, Detalhes, Ref } from "@/components/divulgacao";
 import { Campo } from "@/components/ui";
 import {
   AVISO_REVISAO,
@@ -147,11 +148,14 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
 
   return (
     <div className="space-y-4 print:space-y-3">
-      <p className="rounded-xl bg-info-soft px-3 py-2 text-xs text-info print:hidden">{AVISO_REVISAO}</p>
-
       <section className="card space-y-3 p-4 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">Cargas</h2>
+          <h2 className="flex items-center gap-1 font-semibold">
+            Cargas
+            <Ajuda titulo="Cargas">
+              <p>Chuveiro e ar-condicionado em 220 V: escolha “220 V (2 fases)”. Use a potência de placa sempre que possível.</p>
+            </Ajuda>
+          </h2>
           {listas && listas.quadros.length > 0 && (
             <select defaultValue="" onChange={(e) => e.target.value && importar(Number(e.target.value))} className="input w-auto py-2 text-sm">
               <option value="">Importar de um quadro…</option>
@@ -200,7 +204,7 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
             }}
             className="input"
           >
-            <option value="">+ Aparelho da Tabela 3 da NT…</option>
+            <option value="">+ Aparelho (Tabela 3)</option>
             {TABELA_3.map((a, i) => <option key={a.aparelho} value={i}>{a.aparelho} — {a.potenciaW} W</option>)}
           </select>
           <button
@@ -210,12 +214,17 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
             <Plus className="size-4" /> Carga avulsa
           </button>
         </div>
-        <p className="text-xs text-muted">Chuveiro e ar-condicionado em 220 V: escolha &quot;220 V (2 fases)&quot;. Use a potência de placa sempre que possível.</p>
       </section>
 
-      <section className="card space-y-3 p-4 print:hidden">
-        <h2 className="font-semibold">Equipamentos especiais</h2>
-        <p className="text-xs text-muted">Solda, raios-X, betoneira ou motor com potência em cv (eles mudam a categoria ou exigem estudo).</p>
+      <details open={especiais.length > 0} className="group card print:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 font-semibold [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-1">
+            Motores e especiais {especiais.length > 0 && <span className="text-sm font-normal text-muted">({especiais.length})</span>}
+          </span>
+          <ChevronDown className="size-4 text-muted transition group-open:rotate-180" />
+        </summary>
+        <div className="space-y-3 px-4 pb-4">
+        <p className="text-xs text-muted">Solda, raios-X, betoneira ou motor: mudam a categoria ou exigem estudo.</p>
         {especiais.map((e) => (
           <div key={e.id} className="grid grid-cols-2 gap-2 rounded-xl border border-border p-2.5 sm:grid-cols-5">
             <input value={e.descricao} onChange={(ev) => mudarEsp(e.id, { descricao: ev.target.value })} className="input col-span-2 py-1.5 sm:col-span-1" aria-label="Descrição" />
@@ -246,9 +255,15 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
         <button onClick={() => setEspeciais((l) => [...l, { id: novoId(), descricao: "Motor", tipo: "motor", fases: 1, kva: 0, cv: 1 }])} className="btn btn-secondary">
           <Plus className="size-4" /> Equipamento especial
         </button>
-      </section>
+        </div>
+      </details>
 
-      <section className="card grid gap-3 p-4 sm:grid-cols-2 print:hidden">
+      <details className="group card print:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 font-semibold [&::-webkit-details-marker]:hidden">
+          Opções da ligação
+          <ChevronDown className="size-4 text-muted transition group-open:rotate-180" />
+        </summary>
+        <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
         <Campo rotulo="Onde fica a medição">
           <select value={montagem} onChange={(e) => setMontagem(e.target.value as Montagem)} className="input">
             {Object.entries(ROTULO_MONTAGEM).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
@@ -268,27 +283,27 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
           <label className="flex items-center gap-2"><input type="checkbox" checked={ladoOposto} onChange={(e) => setLadoOposto(e.target.checked)} /> Imóvel do lado oposto à rede</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={rural} onChange={(e) => setRural(e.target.checked)} /> Área rural</label>
         </div>
-      </section>
+        </div>
+      </details>
 
       <section className="card space-y-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted">Padrão de entrada — Equatorial Pará</p>
             <p className="text-2xl font-bold">
               {tipo ? `${ROTULO_LIGACAO[tipo]} · ${cat.linha?.disjuntorA} A` : "Média tensão"}
             </p>
             <p className="text-sm text-muted">
-              {cat.tensao} · carga instalada {demanda.cargaInstaladaKW.toFixed(2)} kW · demanda estimada {demanda.demandaKVA.toFixed(2)} kVA
+              {cat.tensao} · {demanda.cargaInstaladaKW.toFixed(1)} kW instalados
             </p>
           </div>
           <div className="flex gap-2 print:hidden">
-            <button onClick={() => window.print()} className="btn btn-secondary"><Printer className="size-4" /> Imprimir/PDF</button>
+            <button onClick={() => window.print()} className="btn btn-secondary p-2.5" aria-label="Imprimir ou salvar PDF"><Printer className="size-4" /></button>
           </div>
         </div>
 
         {cat.bloqueios.map((b) => <Alerta key={b} tom="perigo" texto={b} />)}
         {cat.estudos.map((b) => <Alerta key={b} tom="aviso" texto={b} />)}
-        {cat.avisos.map((b) => <Alerta key={b} tom="info" texto={b} />)}
+        {cat.avisos.length > 0 && <Conferir titulo="Avisos da norma" itens={cat.avisos} />}
 
         {cat.linha && (
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
@@ -297,15 +312,22 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
             <Dado r="Eletroduto de entrada (aço galvanizado)" v={cat.linha.eletrodutoAco} />
             <Dado r="Aterramento (aço cobreado)" v={`${cat.linha.aterramentoMm2} mm² em eletroduto ${cat.linha.eletrodutoAterramento}`} />
             <Dado r="Haste" v={montagem === "poste_aco" ? "Dispensada (poste de aço)" : "1 haste aço cobreado Ø 16 × 1.500 mm"} />
-            <Dado r="Potência disponibilizada (para solar)" v={`${potenciaDisponibilizadaKVA(cat.linha.disjuntorA, tipo!).toFixed(1)} kVA`} />
-            <Dado
-              r="Ramal (da Equatorial)"
-              v={[
-                cat.linha.ramal.cobreMultiplexadoMm2 && `até 2 km da orla: cobre multiplexado ${cat.linha.ramal.cobreMultiplexadoMm2} mm²`,
-                cat.linha.ramal.aluminio && `demais: alumínio ${cat.linha.ramal.aluminio.tipo} ${cat.linha.ramal.aluminio.mm2} mm²`,
-              ].filter(Boolean).join(" · ")}
-            />
           </dl>
+        )}
+        {cat.linha && (
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">Ramal e potência disponibilizada</summary>
+            <dl className="mt-2 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+              <Dado r="Potência disponibilizada (para solar)" v={`${potenciaDisponibilizadaKVA(cat.linha.disjuntorA, tipo!).toFixed(1)} kVA`} />
+              <Dado
+                r="Ramal (da Equatorial)"
+                v={[
+                  cat.linha.ramal.cobreMultiplexadoMm2 && `até 2 km da orla: cobre multiplexado ${cat.linha.ramal.cobreMultiplexadoMm2} mm²`,
+                  cat.linha.ramal.aluminio && `demais: alumínio ${cat.linha.ramal.aluminio.tipo} ${cat.linha.ramal.aluminio.mm2} mm²`,
+                ].filter(Boolean).join(" · ")}
+              />
+            </dl>
+          </details>
         )}
         {opcao && cat.linha?.observacao && <p className="text-xs text-muted">{cat.linha.observacao}</p>}
 
@@ -315,7 +337,7 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
           <p className="mt-2 text-xs text-muted">Referências: {cat.referencias.join("; ")}</p>
         </details>
         <details>
-          <summary className="cursor-pointer text-sm font-medium">Demanda estimada</summary>
+          <summary className="cursor-pointer text-sm font-medium">Demanda estimada · {demanda.demandaKVA.toFixed(2)} kVA</summary>
           <table className="mt-2 w-full text-xs">
             <tbody>
               {demanda.parcelas.map((p) => (
@@ -333,37 +355,43 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
       </section>
 
       {materiais.length > 0 && (
-        <section className="card p-4">
-          <h2 className="mb-2 font-semibold">Materiais do padrão (por conta do cliente)</h2>
+        <Detalhes titulo={`Materiais do padrão (${materiais.length})`}>
           <ul className="divide-y divide-border text-sm">
             {materiais.map((m) => (
               <li key={m.descricao} className="flex justify-between gap-3 py-2">
-                <span>{m.descricao}<span className="block text-xs text-muted">{m.ref}</span></span>
+                <span>{m.descricao}</span>
                 <span className="shrink-0 font-semibold">{m.quantidade.toLocaleString("pt-BR")} {m.unidade}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-muted">Ramal de conexão, alças, conectores e medidor são da Equatorial (item 6.3.2.3).</p>
-        </section>
+          <p className="mt-2 text-xs text-muted">Ramal, conectores e medidor são da Equatorial (6.3.2.3).</p>
+        </Detalhes>
       )}
 
       {checklist.length > 0 && (
-        <section className="card p-4">
-          <h2 className="mb-2 font-semibold">Checklist antes de pedir a ligação</h2>
+        <Detalhes titulo={`Checklist antes de pedir a ligação (${checklist.length})`}>
           <ul className="space-y-2 text-sm">
             {checklist.map((c) => (
               <li key={c.texto} className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-ok" />
-                <span>{c.texto}<span className="block text-xs text-muted">{c.ref}</span></span>
+                <span className="min-w-0 flex-1">{c.texto}</span>
+                <Ref norma="Ref.">
+                  <p>{c.ref}</p>
+                </Ref>
               </li>
             ))}
           </ul>
-        </section>
+        </Detalhes>
       )}
 
       {tipo && (
         <section className="card space-y-2 p-4 print:hidden">
-          <h2 className="font-semibold">Orçamento do padrão</h2>
+          <h2 className="flex items-center gap-1 font-semibold">
+            Orçamento do padrão
+            <Ajuda titulo="Orçamento do padrão">
+              <p>Usa os preços do seu catálogo; o que não estiver no catálogo entra marcado “[definir preço]”.</p>
+            </Ajuda>
+          </h2>
           <div className="flex flex-col gap-2 sm:flex-row">
             <select value={clienteId} onChange={(e) => setClienteId(Number(e.target.value) || "")} className="input">
               <option value="">Escolha o cliente…</option>
@@ -373,7 +401,6 @@ export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number
               {pendente ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />} Gerar orçamento
             </button>
           </div>
-          <p className="text-xs text-muted">Usa os preços do seu catálogo; o que não estiver no catálogo entra marcado “[definir preço]”.</p>
           {erro && <p className="text-sm text-danger">{erro}</p>}
         </section>
       )}
