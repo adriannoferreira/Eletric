@@ -22,6 +22,7 @@ import { TabelaCompras } from "@/components/quadro/lista-compras";
 import { BlocoDemanda, demandaDoQuadro, ListaSeguranca, TabelaCargas } from "@/components/quadro/projeto-blocos";
 import { QuadroVisual } from "@/components/quadro/quadro-visual";
 import { Unifilar } from "@/components/quadro/unifilar";
+import { Multifilar } from "@/components/quadro/multifilar";
 import { TextoIA } from "@/components/texto-ia";
 import { catalogo, clientes, db, equipamentos, perfil, quadros } from "@/db";
 import { analisarQuadro } from "@/lib/eletrica/calculo";
@@ -45,6 +46,7 @@ const DOCS = {
   laudo: "Laudo técnico",
   manutencao: "Relatório de manutenção preventiva",
   ligacoes: "Ligações do quadro (montagem)",
+  multifilar: "Diagrama multifilar",
 } as const;
 type Doc = keyof typeof DOCS;
 
@@ -151,6 +153,12 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
         </Secao>
         <RodapeDoc extra="Quantidades estimadas; confira na obra antes de comprar." />
       </>
+    );
+  } else if (doc === "multifilar") {
+    conteudo = (
+      <div className="[&_svg]:h-auto [&_svg]:max-h-[180mm] [&_svg]:w-full">
+        <Multifilar dados={dados} analise={analise} selo={{ ...selo, alimentacao: `${dados.alimentacao.tipo} ${dados.alimentacao.tensaoFN}/${dados.alimentacao.tensaoFF} V · ${dados.alimentacao.esquema}` }} />
+      </div>
     );
   } else if (doc === "ligacoes") {
     conteudo = (
@@ -346,6 +354,13 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
             <Unifilar dados={dados} analise={analise} selo={selo} />
           </div>
         </Secao>
+        {sp.multifilar === "1" && (
+          <Secao titulo="Diagrama multifilar" quebra>
+            <div className="[&_svg]:h-auto [&_svg]:w-full">
+              <Multifilar dados={dados} analise={analise} selo={selo} />
+            </div>
+          </Secao>
+        )}
         <Secao titulo="Quadro de cargas" quebra>
           <TabelaCargas dados={dados} analise={analise} />
           <div className="mt-2">
@@ -383,7 +398,7 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
   return (
     <div className="doc-impressao">
       <style>{`
-        @page { size: A4 ${doc === "unifilar" ? "landscape" : "portrait"}; margin: 12mm; }
+        @page { size: ${sp.papel === "a3" ? "A3" : "A4"} ${doc === "unifilar" || doc === "multifilar" ? "landscape" : "portrait"}; margin: 12mm; }
         .doc-impressao {
           --bg: #ffffff; --surface: #ffffff; --surface-2: #f1f2f4; --border: #c9cdd3; --fg: #111111; --muted: #4b5563;
           --accent: #f5b301; --accent-fg: #1a1400; --accent-soft: #fff4cc;
@@ -408,9 +423,20 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
         </Link>
         <span className="mr-auto font-semibold">{DOCS[doc]}</span>
         {doc === "completo" && (
-          <Link href={`/quadros/${id}/imprimir?etiquetas=${sp.etiquetas === "1" ? "0" : "1"}`} className="btn btn-secondary">
-            {sp.etiquetas === "1" ? "Sem etiquetas" : "Incluir etiquetas"}
-          </Link>
+          <>
+            <Link
+              href={`/quadros/${id}/imprimir?etiquetas=${sp.etiquetas === "1" ? "0" : "1"}&multifilar=${sp.multifilar === "1" ? "1" : "0"}`}
+              className="btn btn-secondary"
+            >
+              {sp.etiquetas === "1" ? "Sem etiquetas" : "Incluir etiquetas"}
+            </Link>
+            <Link
+              href={`/quadros/${id}/imprimir?multifilar=${sp.multifilar === "1" ? "0" : "1"}&etiquetas=${sp.etiquetas === "1" ? "1" : "0"}`}
+              className="btn btn-secondary"
+            >
+              {sp.multifilar === "1" ? "Sem multifilar" : "Incluir multifilar"}
+            </Link>
+          </>
         )}
         <BotaoImprimir />
       </div>

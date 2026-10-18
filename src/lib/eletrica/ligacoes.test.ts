@@ -221,3 +221,23 @@ describe("verificações", () => {
     expect(erros(q).some((a) => /invertido/.test(a.mensagem))).toBe(true);
   });
 });
+
+describe("multifilar coerente com as ligações", () => {
+  it("cada saída e cada borne das ligações aparecem no multifilar", async () => {
+    const { gerarMultifilar, bornesDoMultifilar } = await import("./multifilar");
+    for (const e of EXEMPLOS) {
+      const q = quadroExemplo(e.id)!.dados;
+      const m = gerarMultifilar(q);
+      const condutores = new Set(m.grupos.flatMap((g) => g.colunas.flatMap((c) => c.condutores.map((x) => x.ligacaoId))));
+      const saidas = m.ligacoes.ligacoes.filter((l) => l.para.k === "saida");
+      expect(condutores.size, e.id).toBe(saidas.length);
+      for (const l of saidas) expect(condutores.has(l.id)).toBe(true);
+      const bornes = bornesDoMultifilar(m);
+      for (const l of m.ligacoes.ligacoes)
+        for (const p of [l.de, l.para]) if (p.k === "term") expect(bornes.has(`${p.compId}.${p.t}`), `${e.id} ${p.compId}.${p.t}`).toBe(true);
+      // neutros após DR viram N1, N2…
+      const comDR = m.grupos.filter((g) => g.dr && g.colunas.some((c) => c.condutores.some((x) => x.funcao === "N")));
+      for (const g of comDR) for (const c of g.colunas) for (const x of c.condutores.filter((y) => y.funcao === "N")) expect(x.barra).toBe(g.neutro);
+    }
+  });
+});

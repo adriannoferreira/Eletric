@@ -53,6 +53,7 @@ import { type Instrumento, PainelInspecao } from "./painel-inspecao";
 import { PainelManutencao } from "./painel-manutencao";
 import { PainelProjeto } from "./painel-projeto";
 import { VisorUnifilar } from "./visor-unifilar";
+import { VisorMultifilar } from "./visor-multifilar";
 import { EditorComponente } from "./editor-componente";
 import { Folha } from "./folha";
 import { FormCircuito, PRESETS } from "./form-circuito";
@@ -126,6 +127,7 @@ export function Construtor({
   const [sel, setSel] = useState<Selecao>(null);
   const [aba, setAba] = useState<Aba>(() => (ABAS.some((a) => a.id === abaInicial) ? (abaInicial as Aba) : "circuitos"));
   const [verUnifilar, setVerUnifilar] = useState(false);
+  const [verMultifilar, setVerMultifilar] = useState(false);
   const [salvandoModelo, setSalvandoModelo] = useState(false);
   const [escala, setEscala] = useState(2);
   const [menu, setMenu] = useState(false);
@@ -372,6 +374,9 @@ export function Construtor({
         </a>
         <button className="btn btn-secondary shrink-0" onClick={() => setVerUnifilar(true)}>
           <GitBranch className="size-4" /> Unifilar
+        </button>
+        <button className="btn btn-secondary shrink-0" onClick={() => setVerMultifilar(true)}>
+          <GitBranch className="size-4" /> Multifilar
         </button>
         <BotaoOrcamento
           className="btn btn-secondary shrink-0"
@@ -739,6 +744,19 @@ export function Construtor({
         <ConfigQuadro dados={dados} aoMudar={setDados} clientes={clientes} clienteId={clienteId} aoMudarCliente={setClienteId} />
       </Folha>
 
+      {verMultifilar && (
+        <VisorMultifilar
+          id={id}
+          dados={dados}
+          analise={analise}
+          selo={{
+            ...selo,
+            alimentacao: `${dados.alimentacao.tipo} ${dados.alimentacao.tensaoFN}/${dados.alimentacao.tensaoFF} V · ${dados.alimentacao.esquema}`,
+          }}
+          alterado={alterado}
+          aoFechar={() => setVerMultifilar(false)}
+        />
+      )}
       {verUnifilar && (
         <VisorUnifilar id={id} dados={dados} analise={analise} selo={selo} alterado={alterado} aoFechar={() => setVerUnifilar(false)} />
       )}
