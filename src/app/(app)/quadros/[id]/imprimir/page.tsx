@@ -27,6 +27,7 @@ import { analisarQuadro, listaMateriais } from "@/lib/eletrica/calculo";
 import { montarListaCompras } from "@/lib/eletrica/compras";
 import { concessionaria } from "@/lib/eletrica/concessionarias";
 import { gerarChecklist } from "@/lib/eletrica/inspecao";
+import { laudoPadrao } from "@/lib/eletrica/laudo";
 import { fasesDisponiveis, lerQuadro } from "@/lib/eletrica/tipos";
 
 export const metadata = { title: "Imprimir quadro" };
@@ -155,8 +156,8 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
       <p>Nenhuma visita de manutenção registrada.</p>
     );
   } else if (doc === "laudo") {
-    const l = dados.laudo;
-    const insp = dados.inspecoes.find((i) => i.id === l?.inspecaoId) ?? null;
+    const l = dados.laudo ?? laudoPadrao(dados);
+    const insp = dados.inspecoes.find((i) => i.id === l.inspecaoId) ?? null;
     const itens = gerarChecklist(dados);
     const conc = dados.projeto ? concessionaria(dados.projeto.obra.concessionaria) : null;
     const temDPS = dados.componentes.some((x) => x.pecaId.startsWith("dps-"));

@@ -133,7 +133,7 @@ export function TabelaCargas({ dados, analise }: { dados: QuadroDados; analise: 
             <th className="py-2 pr-2">#</th>
             <th className="pr-2">Circuito</th>
             <th className="pr-2">Tipo</th>
-            <th className="pr-2">Local</th>
+            <th className="pr-2" title="Local usado para a exigência de DR">Local (DR)</th>
             <th className="pr-2 text-right">Pot. (W)</th>
             <th className="pr-2 text-right">V</th>
             <th className="pr-2">Fases</th>

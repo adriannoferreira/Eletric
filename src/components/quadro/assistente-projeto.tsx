@@ -83,7 +83,8 @@ export function AssistenteProjeto({
       const r = localStorage.getItem(RASCUNHO);
       if (r) {
         const d = JSON.parse(r);
-        if (d?.projeto) {
+        // Só conta como rascunho se havia algo digitado (evita falso aviso no modo de desenvolvimento).
+        if (d?.projeto && (d.projeto.ambientes?.length || d.projeto.cargas?.length)) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- restauração única do rascunho salvo neste aparelho
           setProjeto(d.projeto);
           setNome(d.nome ?? "");

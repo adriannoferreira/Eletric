@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { interpretarRedacao } from "./laudo";
 import { analisarQuadro } from "./calculo";
 import { EXEMPLOS, quadroExemplo } from "./exemplos";
 import {
@@ -210,5 +211,29 @@ describe("manutenção preventiva", () => {
     expect(b.numero).toBe(2);
     expect(resumirVisita(itens, b).estado).toBe("bom");
     expect(tendencia(itens, b, a).find((t) => t.item.id === "man:i:R")?.delta).toBe(6);
+  });
+});
+
+describe("laudo — leitura da redação da IA", () => {
+  it("extrai análise, não conformidades com risco e conclusão", () => {
+    const t = `### ANALISE
+Instalação em bom estado geral.
+### NAO_CONFORMIDADES
+- [alto] DR do banheiro não dispara | Substituir o DR
+- [médio] Falta identificação | Etiquetar circuitos
+### CONCLUSAO
+ressalvas
+Apta após correções.`;
+    const r = interpretarRedacao(t)!;
+    expect(r.analise).toBe("Instalação em bom estado geral.");
+    expect(r.naoConformidades).toEqual([
+      { risco: "alto", descricao: "DR do banheiro não dispara", recomendacao: "Substituir o DR" },
+      { risco: "medio", descricao: "Falta identificação", recomendacao: "Etiquetar circuitos" },
+    ]);
+    expect(r.conclusao).toBe("ressalvas");
+    expect(r.textoConclusao).toBe("Apta após correções.");
+  });
+  it("texto fora do formato retorna null", () => {
+    expect(interpretarRedacao("qualquer coisa")).toBeNull();
   });
 });

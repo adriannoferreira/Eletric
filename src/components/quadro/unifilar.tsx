@@ -179,8 +179,11 @@ export function Unifilar({
       <line x1={X0} y1={124} x2={X0 - 34} y2={124} />
       <line x1={X0 - 34} y1={124} x2={X0 - 34} y2={136} />
       <Terra x={X0 - 34} y={136} />
-      <T x={X0 - 60} y={160} size={8}>
-        {a.esquema === "TN-C-S" ? "Haste(s) — PEN aterrado" : a.esquema === "TT" ? "Haste(s) da entrada" : "Haste(s) — PE na origem"}
+      <T x={X0 - 62} y={160} size={8}>
+        Haste(s)
+      </T>
+      <T x={X0 - 62} y={169} size={8} opacity={0.75}>
+        {a.esquema === "TN-C-S" ? "PEN aterrado" : a.esquema === "TT" ? "da entrada" : "PE na origem"}
       </T>
       <line x1={X0} y1={110} x2={X0} y2={190} />
       <T x={X0 + 6} y={150} size={8}>

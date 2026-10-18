@@ -6,6 +6,42 @@ import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
 import { LOCAIS, type QuadroDados } from "@/lib/eletrica/tipos";
 
 const FONTES = { P: 6, M: 7.5, G: 9 } as const;
+/** Módulos por tira impressa: 10 × 18 mm = 180 mm cabem na largura útil de uma A4 em pé. */
+const MAX_MODULOS_TIRA = 10;
+
+type Celula = { largura: number; texto: string[]; tipo: string };
+
+/** Divide a fileira em tiras de até MAX_MODULOS_TIRA módulos (reservas podem ser partidas). */
+function emTiras(celulas: Celula[]) {
+  const tiras: Celula[][] = [[]];
+  let usados = 0;
+  for (const c of celulas) {
+    let resta = c.largura;
+    while (resta > 0) {
+      const livre = MAX_MODULOS_TIRA - usados;
+      if (c.tipo !== "reserva" && c.largura > livre && usados > 0) {
+        tiras.push([]);
+        usados = 0;
+        continue;
+      }
+      const parte = c.tipo === "reserva" ? Math.min(resta, livre) : resta;
+      tiras[tiras.length - 1].push({ ...c, largura: parte });
+      usados += parte;
+      resta -= parte;
+      if (usados >= MAX_MODULOS_TIRA && resta > 0) {
+        tiras.push([]);
+        usados = 0;
+      }
+    }
+  }
+  return tiras.filter((t) => t.length);
+}
+
+/** "Iluminação — Sala, Quarto" → ["Iluminação", "Sala, Quarto"]. */
+export function partesNome(nome: string): [string, string | null] {
+  const i = nome.indexOf(" — ");
+  return i > 0 ? [nome.slice(0, i), nome.slice(i + 3)] : [nome, null];
+}
 
 /**
  * Etiquetas do quadro para impressão em preto e branco, alto contraste:
@@ -42,7 +78,7 @@ export function Etiquetas({
       .map((c) => ({ c, p: peca(c.pecaId) }))
       .filter((x) => x.p)
       .sort((a, b) => a.c.posicao - b.c.posicao);
-    const celulas: { largura: number; texto: string[]; tipo: string }[] = [];
+    const celulas: Celula[] = [];
     let pos = 0;
     const reserva = (n: number) => n > 0 && celulas.push({ largura: n, texto: ["RESERVA"], tipo: "reserva" });
     for (const { c, p } of pecas) {
@@ -60,7 +96,7 @@ export function Etiquetas({
       pos = c.posicao + w;
     }
     reserva(dados.modelo.modulosPorFileira - pos);
-    return celulas;
+    return emTiras(celulas);
   });
 
   return (
@@ -98,12 +134,14 @@ export function Etiquetas({
               Faixa de identificação — {nome} (recorte e cole acima de cada fileira)
             </h3>
             <div className="space-y-3">
-              {fileiras.map((cel, f) => (
-                <div key={f}>
+              {fileiras.flatMap((tiras, f) =>
+                tiras.map((cel, t) => (
+                <div key={`${f}-${t}`} className="break-inside-avoid overflow-x-auto">
                   <p className="mb-0.5" style={{ fontSize: `${pt - 1}pt` }}>
                     Fileira {f + 1}
+                    {tiras.length > 1 ? ` — parte ${t + 1}/${tiras.length} (emende as partes)` : ""}
                   </p>
-                  <div className="flex border-2 border-black" style={{ width: `${dados.modelo.modulosPorFileira * 18}mm` }}>
+                  <div className="flex w-max border-2 border-black">
                     {cel.map((c, i) => (
                       <div
                         key={i}
@@ -121,7 +159,8 @@ export function Etiquetas({
                     ))}
                   </div>
                 </div>
-              ))}
+                )),
+              )}
             </div>
           </section>
         )}
@@ -150,8 +189,8 @@ export function Etiquetas({
                 {analise.circuitos.map((r, i) => (
                   <tr key={r.circuito.id} className="border-b border-black">
                     <td className="pr-1 font-bold">{i + 1}</td>
-                    <td className="pr-1">{r.circuito.nome}</td>
-                    <td className="pr-1">{LOCAIS[r.circuito.local].nome}</td>
+                    <td className="pr-1">{partesNome(r.circuito.nome)[0]}</td>
+                    <td className="pr-1">{partesNome(r.circuito.nome)[1] ?? LOCAIS[r.circuito.local].nome}</td>
                     <td className="pr-1">{r.pecaDisjuntor ? `${r.pecaDisjuntor.rotulo} ${r.pecaDisjuntor.polos}P` : "—"}</td>
                     <td className="pr-1">{r.circuito.drId ? (drEtiqueta.get(r.circuito.drId) ?? "Sim") : r.temDR ? "Geral" : "—"}</td>
                     <td className="pr-1">{r.dim.secao ? `${r.dim.secao.toLocaleString("pt-BR")} mm²` : "—"}</td>
