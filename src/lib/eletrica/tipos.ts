@@ -286,6 +286,52 @@ export const ManutencaoSchema = z.object({
 });
 export type Manutencao = z.infer<typeof ManutencaoSchema>;
 
+// ---------------------------------------------------------------------------
+// Ligações internas do quadro (cores, ajustes manuais e montagem)
+// ---------------------------------------------------------------------------
+
+/** Cores padrão (editáveis). NBR 5410 6.1.5.3: neutro azul-claro, PE verde-amarelo/verde, fases em outras cores. */
+export const CORES_PADRAO = { R: "preto", S: "vermelho", T: "branco", N: "azul", PE: "verde-amarelo", retorno: "amarelo" } as const;
+
+export const CoresCaboSchema = z.object({
+  R: z.string().catch(CORES_PADRAO.R),
+  S: z.string().catch(CORES_PADRAO.S),
+  T: z.string().catch(CORES_PADRAO.T),
+  N: z.string().catch(CORES_PADRAO.N),
+  PE: z.string().catch(CORES_PADRAO.PE),
+  retorno: z.string().catch(CORES_PADRAO.retorno),
+});
+export type CoresCabo = z.infer<typeof CoresCaboSchema>;
+
+export const AjusteLigacaoSchema = z.object({
+  cor: z.string().nullable().catch(null),
+  secao: z.number().positive().nullable().catch(null),
+  /** Para a alimentação de uma sequência de disjuntores: forçar cabos em vez do pente. */
+  modo: z.enum(["cabo", "pente"]).nullable().catch(null),
+});
+export type AjusteLigacao = z.infer<typeof AjusteLigacaoSchema>;
+
+export const AjustePecaSchema = z.object({
+  /** Alimentar por ponte (jumper) a partir do vizinho, em vez de pente. */
+  jumper: z.boolean().catch(false),
+  /** Alimentação chegando pelos terminais de baixo (carga) — registra inversão encontrada na obra. */
+  inverter: z.boolean().catch(false),
+});
+export type AjustePeca = z.infer<typeof AjustePecaSchema>;
+
+export const LigacoesConfigSchema = z.object({
+  cores: CoresCaboSchema.catch(CoresCaboSchema.parse({})),
+  /** Ajustes por id de ligação. */
+  ajustes: z.record(z.string(), AjusteLigacaoSchema).catch({}),
+  /** Ajustes por id de componente. */
+  pecas: z.record(z.string(), AjustePecaSchema).catch({}),
+  /** Barra de onde sai o neutro de cada circuito (registro "como está na obra"); vazio = automático. */
+  neutros: z.record(z.string(), z.string()).catch({}),
+  /** Ids das ligações já feitas na montagem. */
+  feitas: z.array(z.string()).catch([]),
+});
+export type LigacoesConfig = z.infer<typeof LigacoesConfigSchema>;
+
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
   alimentacao: AlimentacaoSchema.catch(AlimentacaoSchema.parse({})),
@@ -303,6 +349,8 @@ export const QuadroDadosSchema = z.object({
   laudo: LaudoSchema.nullable().catch(null),
   art: RegistroArtSchema.nullable().catch(null),
   manutencao: ManutencaoSchema.nullable().catch(null),
+  /** Cores, ajustes e progresso das ligações internas (null = tudo automático). */
+  ligacoes: LigacoesConfigSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -331,6 +379,7 @@ export function novoQuadro(
     laudo: null,
     art: null,
     manutencao: null,
+    ligacoes: null,
   };
 }
 

@@ -10,6 +10,7 @@
 import { analisarQuadro, correnteProjeto, dimensionar, disjuntorMinimo, tensaoDoCircuito } from "./calculo";
 import { concessionaria, LIMITES_CATEGORIA_KVA } from "./concessionarias";
 import { type Caixa, caixa as caixaPorId, filtrarCaixas, modeloDaCaixa } from "./caixas";
+import { ajustarFasesAoPente } from "./ligacoes";
 import { modulosOcupados, peca, type Peca } from "./pecas";
 import { CORRENTES_NOMINAIS, reservaMinima } from "./tabelas";
 import {
@@ -707,12 +708,28 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
   });
   if (avisoCaixa) alertas.push({ nivel: "aviso", mensagem: avisoCaixa });
 
+  // Fases dos disjuntores na sequência do pente (montagem real), mantendo o equilíbrio.
+  const montado = ajustarFasesAoPente({
+    versao: VERSAO_QUADRO,
+    alimentacao,
+    modelo,
+    componentes,
+    circuitos: circuitosFinais,
+    projeto: p,
+    memorial: null,
+    compras: [],
+    inspecoes: [],
+    laudo: null,
+    art: null,
+    manutencao: null,
+    ligacoes: null,
+  });
   return {
     dados: {
       versao: VERSAO_QUADRO,
       alimentacao,
       modelo,
-      componentes,
+      componentes: montado.componentes,
       circuitos: circuitosFinais,
       projeto: p,
       memorial: null,
@@ -721,6 +738,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
       laudo: null,
       art: null,
       manutencao: null,
+      ligacoes: null,
     },
     demanda,
     alertas,

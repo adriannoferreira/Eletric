@@ -110,6 +110,9 @@ export function adicionarComponente(
     const comDPS = new Set(q.componentes.filter((c) => peca(c.pecaId)?.tipo === "dps").flatMap((c) => c.fases));
     const livre = fasesDisponiveis(q.alimentacao).find((f) => !comDPS.has(f));
     fases = livre ? [livre] : [];
+  } else if (p.tipo === "dr") {
+    // DR: o último polo fica para o neutro (DR 2P → 1 fase + N; 4P → até 3 fases + N).
+    fases = fasesSugeridas(q, Math.max(1, Math.min(p.polos - 1, 3)));
   } else {
     fases = fasesSugeridas(q, Math.min(p.polos, 3));
   }
