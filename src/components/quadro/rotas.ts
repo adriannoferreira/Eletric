@@ -37,7 +37,7 @@ interface Faixa {
   ocupacao: [number, number][][];
 }
 
-type Encaixe = "cima" | "baixo" | "esquerda" | "direita";
+type Encaixe = "cima" | "baixo" | "esquerda" | "direita" | "barraLado" | "entradaBaixo";
 
 export function rotear(q: QuadroDados, ligacoes: Ligacao[], barras: Barra[]) {
   const geo = geometria(q);
@@ -56,8 +56,23 @@ export function rotear(q: QuadroDados, ligacoes: Ligacao[], barras: Barra[]) {
     faixas.push({ topo, base: y0 - 3, ocupacao: [] });
     topo = y1 + 3;
   }
-  const yBarra = Math.min(...lay.itens.filter((i) => !i.id.startsWith("F:")).map((i) => i.y));
-  faixas.push({ topo, base: Number.isFinite(yBarra) ? yBarra - 3 : topo + 30, ocupacao: [] });
+  const yBarra = lay.vertical ? NaN : Math.min(...lay.itens.filter((i) => !i.id.startsWith("F:")).map((i) => i.y));
+  faixas.push({ topo, base: Number.isFinite(yBarra) ? yBarra - 3 : topo + 34, ocupacao: [] });
+
+  // Raias verticais à esquerda das barras laterais (caixa vertical)
+  const raiasDir: [number, number][][] = [];
+  const xBarrasLado = Math.min(...lay.itens.filter((i) => i.vertical).map((i) => i.x), Infinity);
+  const raiaDireita = (y0: number, y1: number) => {
+    const [a, b] = y0 < y1 ? [y0, y1] : [y1, y0];
+    let k = 0;
+    for (;;) {
+      raiasDir[k] ??= [];
+      if (!raiasDir[k].some(([c, d]) => a < d + 2 && b > c - 2)) break;
+      k++;
+    }
+    raiasDir[k].push([a, b]);
+    return xBarrasLado - 6 - (k % 6) * 2.6;
+  };
 
   const faixaAcima = (y: number) => {
     let melhor = 0;
@@ -100,8 +115,8 @@ export function rotear(q: QuadroDados, ligacoes: Ligacao[], barras: Barra[]) {
   };
 
   const encaixe = (p: Ponto, xy: { x: number; y: number }): Encaixe => {
-    if (p.k === "entrada") return "baixo";
-    if (p.k === "barra") return p.barra.startsWith("F:") ? "cima" : "cima";
+    if (p.k === "entrada") return q.modelo.saidaCabos === "cima" ? "baixo" : "entradaBaixo";
+    if (p.k === "barra") return lay.vertical && !p.barra.startsWith("F:") ? "barraLado" : "cima";
     if (p.k === "carcaca") return "direita";
     if (p.k === "term") {
       const x = porId.get(p.compId);
@@ -127,7 +142,8 @@ export function rotear(q: QuadroDados, ligacoes: Ligacao[], barras: Barra[]) {
       const e = encaixe(l.de, a);
       const n = num.get(l.para.circuitoId) ?? "?";
       const rot = l.funcao === "F" ? `${n}` : l.funcao === "N" ? `N${n}` : `T${n}`;
-      if (e === "esquerda") saidas.push({ id: l.id, x: a.x, y: a.y, dx: -16, dy: 0, rotulo: rot });
+      if (e === "barraLado") saidas.push({ id: l.id, x: a.x + GEO.alturaBarra, y: a.y, dx: 14, dy: 0, rotulo: rot });
+      else if (e === "esquerda") saidas.push({ id: l.id, x: a.x, y: a.y, dx: -16, dy: 0, rotulo: rot });
       else if (e === "direita") saidas.push({ id: l.id, x: a.x, y: a.y, dx: 16, dy: 0, rotulo: rot });
       else if (l.de.k === "barra") saidas.push({ id: l.id, x: a.x, y: a.y + GEO.alturaBarra, dx: 0, dy: 14, rotulo: rot });
       else saidas.push({ id: l.id, x: a.x, y: a.y, dx: 0, dy: 18, rotulo: rot });
@@ -147,6 +163,23 @@ export function rotear(q: QuadroDados, ligacoes: Ligacao[], barras: Barra[]) {
   }
 
   function caminho(a: { x: number; y: number }, ea: Encaixe, b: { x: number; y: number }, eb: Encaixe) {
+    // Barras laterais (caixa vertical) e entrada por baixo: chegam pela lateral.
+    const especial = (e: Encaixe) => e === "barraLado" || e === "entradaBaixo";
+    if (especial(ea) || especial(eb)) {
+      const [p, ep, o, eo] = especial(ea) ? [a, ea, b, eb] : [b, eb, a, ea];
+      let pts: { x: number; y: number }[];
+      if (especial(eo)) {
+        // entrada por baixo ↔ barra lateral: sobe direto pelo corredor da barra
+        const x = ep === "barraLado" ? raiaDireita(p.y, o.y) : raiaDireita(o.y, p.y);
+        pts = [p, { x, y: p.y }, { x, y: o.y }, o];
+      } else {
+        const fo = faixaDe(o, eo);
+        const ty = fo >= 0 ? pista(fo, ep === "barraLado" ? xBarrasLado : GEO.margemX, o.x) : o.y;
+        const x = ep === "barraLado" ? raiaDireita(p.y, ty) : raia(p.y, ty);
+        pts = [p, { x, y: p.y }, { x, y: ty }, { x: o.x, y: ty }, o];
+      }
+      return especial(ea) ? pts : pts.reverse();
+    }
     // Pontos laterais (NEMA/carcaça): saem para a lateral e entram na raia.
     const lateral = (e: Encaixe) => e === "esquerda" || e === "direita";
     if (lateral(ea) || lateral(eb)) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { linhasDoModelo } from "@/lib/eletrica/caixas";
+import { linhasDoModelo, orientacaoDoModelo } from "@/lib/eletrica/caixas";
 import { useState } from "react";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
@@ -133,24 +133,29 @@ export function Etiquetas({
         {blocos.faixa && (
           <section className="break-inside-avoid">
             <h3 className="mb-1 font-bold" style={{ fontSize: `${pt + 2}pt` }}>
-              Faixa de identificação — {nome} (recorte e cole acima de cada fileira)
+              Faixa de identificação — {nome} (recorte e cole {dados.modelo.padrao === "NEMA" ? "ao lado de cada coluna" : "acima de cada trilho"}; quadro {orientacaoDoModelo(dados.modelo)})
             </h3>
             <div className="space-y-3">
               {fileiras.flatMap((tiras, f) =>
                 tiras.map((cel, t) => (
                 <div key={`${f}-${t}`} className="break-inside-avoid overflow-x-auto">
                   <p className="mb-0.5" style={{ fontSize: `${pt - 1}pt` }}>
-                    Fileira {f + 1}
+                    {linhasQ[f]?.nome ?? `Trilho ${f + 1}`}
+                    {linhasQ[f]?.padrao === "NEMA" ? " — faixa vertical, cole ao lado da coluna" : ""}
                     {tiras.length > 1 ? ` — parte ${t + 1}/${tiras.length} (emende as partes)` : ""}
                   </p>
-                  <div className="flex w-max border-2 border-black">
+                  <div className={`flex w-max border-2 border-black ${linhasQ[f]?.padrao === "NEMA" ? "flex-col" : ""}`}>
                     {cel.map((c, i) => (
                       <div
                         key={i}
                         className={`flex flex-col items-center justify-center overflow-hidden border-r border-black text-center leading-tight last:border-r-0 ${
                           c.tipo === "reserva" ? "text-[#555]" : ""
                         } ${c.tipo === "dr" || c.tipo === "dps" ? "bg-[#e5e5e5]" : ""}`}
-                        style={{ width: `${c.largura * 18}mm`, height: "14mm", padding: "0.5mm" }}
+                        style={
+                          linhasQ[f]?.padrao === "NEMA"
+                            ? { width: "34mm", height: `${c.largura * 25.4}mm`, padding: "0.5mm" }
+                            : { width: `${c.largura * 18}mm`, height: "14mm", padding: "0.5mm" }
+                        }
                       >
                         {c.texto.map((t, j) => (
                           <span key={j} className={j === 0 ? "font-bold" : ""} style={{ wordBreak: "break-word" }}>

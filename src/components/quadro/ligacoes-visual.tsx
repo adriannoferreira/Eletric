@@ -2,7 +2,16 @@
 
 import { useMemo } from "react";
 import { capacidadeTotal } from "@/lib/eletrica/caixas";
-import { CORES_CABO, GEO, type Ligacao, posicaoTerminal, type ResultadoLigacoes, retanguloPeca, terminaisDaPeca } from "@/lib/eletrica/ligacoes";
+import {
+  CORES_CABO,
+  GEO,
+  type Ligacao,
+  pontoEntrada,
+  posicaoTerminal,
+  type ResultadoLigacoes,
+  retanguloPeca,
+  terminaisDaPeca,
+} from "@/lib/eletrica/ligacoes";
 import { padraoDaPeca, peca } from "@/lib/eletrica/pecas";
 import type { QuadroDados } from "@/lib/eletrica/tipos";
 import { rotear } from "./rotas";
@@ -39,8 +48,9 @@ export function LigacoesVisual({
   const comps = dados.componentes.map((c) => ({ c, p: peca(c.pecaId) })).filter((x) => x.p);
   const metal = dados.modelo.material === "metalico";
 
-  const largura = GEO.margemX + Math.max(geo.larguraUtil, ...barras.itens.map((b) => b.x + b.w - GEO.margemX)) + 28;
-  const altura = barras.yFim + 34;
+  const largura = barras.larguraTotal + 30;
+  const entradaY = pontoEntrada(dados, "R", barras.yFim).y;
+  const altura = Math.max(barras.yFim, entradaY) + 34;
   const k = 2 * escala;
   const destaque = selecionada ? porId.get(selecionada) : null;
   const opac = (id: string) => (!selecionada || id === selecionada ? 1 : 0.18);
@@ -93,8 +103,8 @@ export function LigacoesVisual({
 
       {/* Entrada */}
       <g>
-        <text x={8} y={4.6} fontSize={3.6} fill="#374151" fontWeight={700}>
-          ENTRADA
+        <text x={8} y={entradaY < 20 ? 4.6 : entradaY + 12} fontSize={3.6} fill="#374151" fontWeight={700}>
+          ENTRADA {entradaY < 20 ? "" : "(por baixo)"}
         </text>
         {(["R", "S", "T", "N", "PE"] as const).map((c, i) => {
           const usada = resultado.ligacoes.some((l) => l.de.k === "entrada" && l.de.condutor === c);
@@ -102,8 +112,8 @@ export function LigacoesVisual({
           const cor = c === "N" ? resultado.cores.N : c === "PE" ? resultado.cores.PE : resultado.cores[c];
           return (
             <g key={c}>
-              <rect x={8 + i * 7 - 2.4} y={6} width={4.8} height={5} rx={1} fill={c === "PE" ? "url(#pe)" : hex(cor)} stroke="#111827" strokeWidth={0.3} />
-              <text x={8 + i * 7} y={14.5} fontSize={3} textAnchor="middle" fill="#111827">{c}</text>
+              <rect x={8 + i * 7 - 2.4} y={entradaY < 20 ? 6 : entradaY - 1} width={4.8} height={5} rx={1} fill={c === "PE" ? "url(#pe)" : hex(cor)} stroke="#111827" strokeWidth={0.3} />
+              <text x={8 + i * 7} y={entradaY < 20 ? 14.5 : entradaY + 7.5} fontSize={3} textAnchor="middle" fill="#111827">{c}</text>
             </g>
           );
         })}
@@ -211,11 +221,21 @@ export function LigacoesVisual({
         const pe = b.id === "PE";
         return (
           <g key={b.id}>
-            <rect x={b.x} y={b.y} width={b.w} height={GEO.alturaBarra} rx={1.5} fill={pe ? "url(#pe)" : "#2563eb"} stroke="#111827" strokeWidth={0.4} />
-            {Array.from({ length: Math.max(b.bornes, 3) }).map((_, i) => (
-              <circle key={i} cx={b.x + GEO.bornePasso * (i + 1) - 2} cy={b.y + 4} r={1.8} fill={i < b.bornes ? "#e5e7eb" : "#94a3b8"} stroke="#111827" strokeWidth={0.3} />
-            ))}
-            <text x={b.x + 2} y={b.y + GEO.alturaBarra - 2} fontSize={2.8} fontWeight={700} fill="#fff">
+            <rect x={b.x} y={b.y} width={b.w} height={b.h} rx={1.5} fill={pe ? "url(#pe)" : "#2563eb"} stroke="#111827" strokeWidth={0.4} />
+            {Array.from({ length: Math.max(b.bornes, 3) }).map((_, i) =>
+              b.vertical ? (
+                <circle key={i} cx={b.x + 4} cy={b.y + GEO.bornePasso * (i + 1) - 2} r={1.8} fill={i < b.bornes ? "#e5e7eb" : "#94a3b8"} stroke="#111827" strokeWidth={0.3} />
+              ) : (
+                <circle key={i} cx={b.x + GEO.bornePasso * (i + 1) - 2} cy={b.y + 4} r={1.8} fill={i < b.bornes ? "#e5e7eb" : "#94a3b8"} stroke="#111827" strokeWidth={0.3} />
+              ),
+            )}
+            <text
+              x={b.vertical ? b.x : b.x + 2}
+              y={b.vertical ? b.y - 2 : b.y + GEO.alturaBarra - 2}
+              fontSize={2.8}
+              fontWeight={700}
+              fill={b.vertical ? "#111827" : "#fff"}
+            >
               {pe ? "PE" : info?.drId ? `N ${resultado.nomes.get(info.drId) ?? "DR"}` : "N"}
             </text>
           </g>

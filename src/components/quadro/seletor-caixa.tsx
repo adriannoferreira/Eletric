@@ -14,48 +14,82 @@ import {
   type Instalacao,
   LIMITES_PERSONALIZADO,
   type MaterialCaixa,
+  LINHAS,
+  linhaDoModelo,
   modeloDaCaixa,
   NOME_INSTALACAO,
+  NOME_ORIENTACAO,
+  type Orientacao,
   NOME_MATERIAL,
   type PadraoCaixa,
 } from "@/lib/eletrica/caixas";
 import type { ModeloQuadro } from "@/lib/eletrica/tipos";
 
-/** Desenho pequeno da caixa: trilhos DIN ou colunas NEMA + trilho auxiliar. */
-export function MiniCaixa({ m, className = "h-16" }: { m: Pick<ModeloQuadro, "fileiras" | "modulosPorFileira" | "padrao" | "trilhoAux" | "material">; className?: string }) {
-  const metal = m.material === "metalico";
-  if (m.padrao === "NEMA") {
-    const aux = m.trilhoAux > 0 ? 1 : 0;
-    const linhas = m.modulosPorFileira;
-    const H = 12 + aux * 10 + linhas * 5;
-    return (
-      <svg viewBox={`0 0 60 ${H}`} className={className} aria-hidden>
-        <rect x="1" y="1" width="58" height={H - 2} rx="4" fill={metal ? "#6b7280" : "#e5e7eb"} stroke="#374151" />
-        <rect x="5" y="5" width="50" height={H - 10} rx="2" fill="#f3f4f6" />
-        {aux > 0 && <rect x="9" y="8" width="42" height="5" rx="1" fill="#9ca3af" />}
-        <rect x="28" y={8 + aux * 10} width="4" height={linhas * 5} fill="#b45309" />
-        {Array.from({ length: linhas }).map((_, i) => (
-          <g key={i}>
-            <rect x="10" y={9 + aux * 10 + i * 5} width="17" height="3.5" rx="0.6" fill="#1f2937" />
-            {m.fileiras > 1 && <rect x="33" y={9 + aux * 10 + i * 5} width="17" height="3.5" rx="0.6" fill="#1f2937" />}
-          </g>
-        ))}
-      </svg>
-    );
-  }
-  const W = 10 + m.modulosPorFileira * 3;
-  const H = 8 + m.fileiras * 9;
+/**
+ * Miniatura realista da caixa, na proporção real (trilho ≈ 125 mm, módulo 18 mm):
+ * cor e acabamento da linha, espelho com as janelas das alavancas, colunas NEMA,
+ * fechadura e furos de entrada.
+ */
+export function MiniCaixa({
+  m,
+  className = "h-16",
+}: {
+  m: Pick<ModeloQuadro, "fileiras" | "modulosPorFileira" | "padrao" | "trilhoAux" | "material" | "linha" | "instalacao" | "ip"> & { saidaCabos?: "baixo" | "cima" };
+  className?: string;
+}) {
+  const skin = linhaDoModelo(m);
+  const nema = m.padrao === "NEMA";
+  const W = nema ? 300 : m.modulosPorFileira * 18 + 80;
+  const H = nema ? m.modulosPorFileira * 26 + (m.trilhoAux ? 110 : 0) + 160 : m.fileiras * 125 + 80;
+  const borda = m.instalacao === "embutir" ? 16 : 8;
+  const vidro = skin.porta === "fume" || skin.porta === "transparente";
+  const yKnock = m.saidaCabos === "cima" ? 4 : H - 4;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={className} aria-hidden>
-      <rect x="0.5" y="0.5" width={W - 1} height={H - 1} rx="3" fill={metal ? "#6b7280" : "#e5e7eb"} stroke="#374151" />
-      <rect x="3" y="3" width={W - 6} height={H - 6} rx="1.5" fill="#f3f4f6" />
-      {Array.from({ length: m.fileiras }).map((_, f) => (
-        <g key={f}>
-          <rect x="4" y={6 + f * 9} width={W - 8} height="2" fill="#9ca3af" />
-          {Array.from({ length: m.modulosPorFileira }).map((__, i) => (
-            <rect key={i} x={5 + i * 3} y={4 + f * 9} width="2.4" height="6" rx="0.4" fill="#d1d5db" stroke="#9ca3af" strokeWidth="0.3" />
-          ))}
-        </g>
+    <svg viewBox={`-6 -6 ${W + 12} ${H + 12}`} className={className} aria-hidden preserveAspectRatio="xMidYMid meet">
+      <rect x={0} y={0} width={W} height={H} rx={m.instalacao === "embutir" ? 10 : 22} fill={skin.corCaixa} stroke="#374151" strokeWidth={3} />
+      {skin.obra && <rect x={0} y={0} width={W} height={14} fill="#111827" opacity={0.85} />}
+      <rect x={borda} y={borda + (skin.obra ? 8 : 0)} width={W - 2 * borda} height={H - 2 * borda - (skin.obra ? 8 : 0)} rx={6} fill={skin.corEspelho} stroke="#9ca3af" strokeWidth={2} />
+      {nema ? (
+        <>
+          {m.trilhoAux > 0 && <rect x={40} y={50} width={W - 80} height={34} rx={4} fill="#1f2937" opacity={0.85} />}
+          {Array.from({ length: m.modulosPorFileira }).map((_, i) => {
+            const y = (m.trilhoAux ? 120 : 50) + i * 26;
+            return (
+              <g key={i}>
+                <rect x={40} y={y} width={100} height={20} rx={3} fill="#1f2937" />
+                {m.fileiras > 1 && <rect x={160} y={y} width={100} height={20} rx={3} fill="#1f2937" />}
+              </g>
+            );
+          })}
+          <rect x={144} y={m.trilhoAux ? 116 : 46} width={12} height={m.modulosPorFileira * 26} fill="#b45309" opacity={0.6} />
+        </>
+      ) : (
+        Array.from({ length: m.fileiras }).map((_, f) => {
+          const y = 40 + f * 125 + 30;
+          return (
+            <g key={f}>
+              <rect x={40} y={y} width={m.modulosPorFileira * 18} height={46} rx={3} fill="#1f2937" opacity={0.9} />
+              {Array.from({ length: m.modulosPorFileira }).map((__, i) => (
+                <rect key={i} x={44 + i * 18} y={y + 14} width={10} height={18} rx={1.5} fill={i % 3 === 2 ? "#e5e7eb" : "#f9fafb"} />
+              ))}
+            </g>
+          );
+        })
+      )}
+      {vidro && (
+        <rect
+          x={borda - 4}
+          y={borda - 4}
+          width={W - 2 * borda + 8}
+          height={H - 2 * borda + 8}
+          rx={8}
+          fill={skin.porta === "fume" ? "#1e293b" : "#bfdbfe"}
+          opacity={skin.porta === "fume" ? 0.45 : 0.28}
+        />
+      )}
+      {skin.fechadura && <circle cx={W - 14} cy={H / 2} r={7} fill="#6b7280" stroke="#111" strokeWidth={2} />}
+      {Array.from({ length: Math.max(3, Math.min(6, Math.round(W / 70))) }).map((_, i, a) => (
+        <circle key={i} cx={(W / (a.length + 1)) * (i + 1)} cy={yKnock} r={7} fill="#00000022" stroke="#00000055" strokeWidth={2} />
       ))}
     </svg>
   );
@@ -83,6 +117,9 @@ export function SeletorCaixa({
   const atual = caixaDoModelo(valor);
   const [personalizado, setPersonalizado] = useState(!atual);
   const [padrao, setPadrao] = useState<Opcao<PadraoCaixa>>(valor.padrao);
+  const [linha, setLinha] = useState<string>("");
+  const [orientacao, setOrientacao] = useState<Opcao<Orientacao>>("");
+  const [saida, setSaida] = useState<"baixo" | "cima">(valor.saidaCabos);
   const [instalacao, setInstalacao] = useState<Opcao<Instalacao>>("");
   const [material, setMaterial] = useState<Opcao<MaterialCaixa>>("");
   const [ip, setIp] = useState<Opcao<GrauIP>>("");
@@ -94,6 +131,8 @@ export function SeletorCaixa({
   const lista = useMemo(
     () =>
       filtrarCaixas({
+        linha: linha || null,
+        orientacao: orientacao || null,
         padrao: padrao || null,
         instalacao: instalacao || null,
         material: material || null,
@@ -102,7 +141,7 @@ export function SeletorCaixa({
         fileiras: fileiras || null,
         modulos: modulos || null,
       }),
-    [padrao, instalacao, material, ip, capMin, fileiras, modulos],
+    [linha, orientacao, padrao, instalacao, material, ip, capMin, fileiras, modulos],
   );
   const opcoesFileiras = [...new Set(filtrarCaixas({ padrao: padrao || null }).map((c) => c.fileiras))].sort((a, b) => a - b);
   const opcoesModulos = [...new Set(filtrarCaixas({ padrao: padrao || null }).map((c) => c.modulosPorFileira))].sort((a, b) => a - b);
@@ -134,6 +173,31 @@ export function SeletorCaixa({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <select
+              className={`${sel} col-span-2`}
+              value={linha}
+              onChange={(e) => {
+                setLinha(e.target.value);
+                const l = LINHAS.find((x) => x.id === e.target.value);
+                if (l) setPadrao(l.padrao);
+              }}
+              aria-label="Modelo do quadro"
+            >
+              <option value="">Todos os modelos</option>
+              {LINHAS.map((l) => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
+              ))}
+            </select>
+            <select className={sel} value={orientacao} onChange={(e) => setOrientacao(e.target.value as Opcao<Orientacao>)} aria-label="Orientação">
+              <option value="">Qualquer formato</option>
+              {Object.entries(NOME_ORIENTACAO).map(([v, r]) => (
+                <option key={v} value={v}>{r}</option>
+              ))}
+            </select>
+            <select className={sel} value={saida} onChange={(e) => setSaida(e.target.value as "baixo" | "cima")} aria-label="Saída dos cabos">
+              <option value="baixo">Cabos por baixo</option>
+              <option value="cima">Cabos por cima</option>
+            </select>
             <select className={sel} value={padrao} onChange={(e) => setPadrao(e.target.value as Opcao<PadraoCaixa>)} aria-label="Padrão">
               <option value="">DIN e NEMA</option>
               <option value="DIN">Padrão DIN</option>
@@ -186,7 +250,8 @@ export function SeletorCaixa({
                 ativa={atual?.id === c.id}
                 ocupados={ocupados}
                 pequena={capacidadeTotal(c) < minimo}
-                aoEscolher={() => aoMudar(modeloDaCaixa(c))}
+                saida={saida}
+                aoEscolher={() => aoMudar(modeloDaCaixa(c, saida))}
               />
             ))}
           </div>
@@ -211,9 +276,11 @@ function CartaoCaixa({
   ativa,
   ocupados,
   pequena,
+  saida,
   aoEscolher,
 }: {
   c: Caixa;
+  saida: "baixo" | "cima";
   ativa: boolean;
   ocupados: number;
   pequena: boolean;
@@ -230,7 +297,7 @@ function CartaoCaixa({
         ativa ? "border-accent bg-accent-soft" : "border-border hover:border-accent"
       } ${pequena ? "opacity-60" : ""}`}
     >
-      <MiniCaixa m={c} className="h-14 w-16 shrink-0" />
+      <MiniCaixa m={{ ...c, saidaCabos: saida }} className="h-16 w-16 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1 text-sm font-semibold leading-tight">
           {ativa && <Check className="size-4 shrink-0 text-ok" />}
@@ -240,9 +307,10 @@ function CartaoCaixa({
             {c.trilhoAux ? ` + ${c.trilhoAux} DIN` : ""})
           </span>
         </p>
+        <p className="text-xs font-medium">{linhaDoModelo({ ...c, linha: c.linha }).nome}</p>
         <p className="text-xs text-muted">
-          {NOME_INSTALACAO[c.instalacao]} · {c.material === "pvc" ? "PVC" : "Metálica"} · {c.ip}
-          {c.barramento ? " · barramento" : ""}
+          {NOME_INSTALACAO[c.instalacao]} · {c.orientacao} · {c.ip}
+          {c.barramento ? " · barramento" : ""} · {c.referencia}
         </p>
         <p className="text-xs">
           Cabe {cabem} disjuntor(es) 1P + reserva
@@ -259,7 +327,9 @@ function Personalizado({ valor: inicial, aoMudar }: { valor: ModeloQuadro; aoMud
   const set = (p: Partial<ModeloQuadro>) => setValor((v) => ({ ...v, ...p, caixaId: null }));
   const aplicado =
     !inicial.caixaId &&
-    (["padrao", "fileiras", "modulosPorFileira", "trilhoAux", "instalacao", "material", "ip"] as const).every((k) => inicial[k] === valor[k]);
+    (["padrao", "fileiras", "modulosPorFileira", "trilhoAux", "instalacao", "material", "ip", "linha", "orientacao", "saidaCabos"] as const).every(
+      (k) => inicial[k] === valor[k],
+    );
   const [fMin, fMax] = LIMITES_PERSONALIZADO.fileiras;
   const [mMin, mMax] = LIMITES_PERSONALIZADO.modulos;
   const nema = valor.padrao === "NEMA";
@@ -274,7 +344,7 @@ function Personalizado({ valor: inicial, aoMudar }: { valor: ModeloQuadro; aoMud
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Campo rotulo="Padrão">
-          <select className="input" value={valor.padrao} onChange={(e) => set({ padrao: e.target.value as PadraoCaixa, fileiras: e.target.value === "NEMA" ? 2 : valor.fileiras })}>
+          <select className="input" value={valor.padrao} onChange={(e) => set({ padrao: e.target.value as PadraoCaixa, fileiras: e.target.value === "NEMA" ? 2 : valor.fileiras, linha: null })}>
             <option value="DIN">DIN (trilho)</option>
             <option value="NEMA">NEMA (barramento)</option>
           </select>
@@ -322,6 +392,34 @@ function Personalizado({ valor: inicial, aoMudar }: { valor: ModeloQuadro; aoMud
             {Object.entries(NOME_MATERIAL).map(([v, r]) => (
               <option key={v} value={v}>{r}</option>
             ))}
+          </select>
+        </Campo>
+        <Campo rotulo="Aparência (modelo)">
+          <select
+            className="input"
+            value={linhaDoModelo(valor).id}
+            onChange={(e) => {
+              const l = LINHAS.find((x) => x.id === e.target.value)!;
+              set({ linha: l.id, material: l.material, ip: l.ip });
+            }}
+          >
+            {LINHAS.filter((l) => l.padrao === valor.padrao).map((l) => (
+              <option key={l.id} value={l.id}>{l.nome}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo rotulo="Formato">
+          <select className="input" value={valor.orientacao ?? ""} onChange={(e) => set({ orientacao: (e.target.value || null) as Orientacao | null })}>
+            <option value="">Automático pela proporção</option>
+            {Object.entries(NOME_ORIENTACAO).map(([v, r]) => (
+              <option key={v} value={v}>{r}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo rotulo="Saída dos cabos">
+          <select className="input" value={valor.saidaCabos} onChange={(e) => set({ saidaCabos: e.target.value as "baixo" | "cima" })}>
+            <option value="baixo">Por baixo</option>
+            <option value="cima">Por cima</option>
           </select>
         </Campo>
         <Campo rotulo="Grau de proteção">

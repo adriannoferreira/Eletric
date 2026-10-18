@@ -342,8 +342,16 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
       <>
         {cab("Projeto do quadro de distribuição")}
         <Secao titulo="Quadro de distribuição">
-          <div className="flex justify-center overflow-hidden">
-            <QuadroVisual dados={dados} nome={q.nome} escala={0.75} />
+          <p className="mb-2 text-sm">{descreverModelo(dados.modelo)}</p>
+          <div className="flex flex-wrap items-start justify-center gap-4 overflow-hidden">
+            <div className="text-center text-xs">
+              <QuadroVisual dados={dados} nome={q.nome} escala={0.5} vista="espelho" />
+              <p className="mt-1">Frente (com espelho)</p>
+            </div>
+            <div className="text-center text-xs">
+              <QuadroVisual dados={dados} nome={q.nome} escala={0.5} vista="montagem" />
+              <p className="mt-1">Montagem (sem espelho)</p>
+            </div>
           </div>
         </Secao>
         <Secao titulo="Demanda e entrada de energia">

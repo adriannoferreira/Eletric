@@ -7,7 +7,7 @@ import { CAIXAS, modeloDaCaixa } from "@/lib/eletrica/caixas";
 import type { ModeloQuadro } from "@/lib/eletrica/tipos";
 import { criarQuadro } from "../actions";
 
-const CAIXA_PADRAO = CAIXAS.find((c) => c.id === "din-24-2x12-embutir-pvc-ip40") ?? CAIXAS[0];
+const CAIXA_PADRAO = CAIXAS.find((c) => c.id === "pvc-branca-embutir-2x12") ?? CAIXAS[0];
 
 const TENSOES = {
   "127/220": "127 V (F-N) / 220 V (F-F)",

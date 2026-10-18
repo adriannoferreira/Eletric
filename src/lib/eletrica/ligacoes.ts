@@ -8,7 +8,7 @@
  * Tudo aqui é função pura (sem React) — usada pelo construtor, PDF, compras e testes.
  */
 import { type Alerta, analisarQuadro, type AnaliseQuadro, listaMateriais, secaoProtecao, type ItemMaterial } from "./calculo";
-import { linhasDoModelo } from "./caixas";
+import { linhasDoModelo, orientacaoDoModelo } from "./caixas";
 import { modulosOcupados, padraoDaPeca, peca, type Peca } from "./pecas";
 import { capacidadeTabela36, SECOES } from "./tabelas";
 import {
@@ -1071,29 +1071,65 @@ export function chavePonto(p: Ponto) {
   }
 }
 
-/** Larguras/posições das barras (lado a lado, abaixo das peças). */
+export interface ItemBarra {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  bornes: number;
+  vertical: boolean;
+}
+
+/**
+ * Posição das barras: lado a lado abaixo das peças (caixas horizontais/quadradas)
+ * ou em pé à direita dos trilhos (caixas verticais).
+ */
 export function layoutBarras(q: QuadroDados, barras: Barra[], geo = geometria(q)) {
   const nemaFases = geo.nema ? fasesDisponiveis(q.alimentacao) : [];
-  const largura = Math.max(geo.larguraUtil, 160);
-  const itens: { id: string; x: number; y: number; w: number; bornes: number }[] = [];
-  let x = GEO.margemX;
-  let y = geo.yBarras;
-  for (const b of barras) {
-    const w = Math.max(40, (Math.max(b.bornes, 3) + 1) * GEO.bornePasso);
-    if (x + w > GEO.margemX + largura && x > GEO.margemX) {
-      x = GEO.margemX;
-      y += GEO.alturaBarra + 26;
+  const vertical = orientacaoDoModelo(q.modelo) === "vertical" && !geo.nema;
+  const itens: ItemBarra[] = [];
+  let yFim: number;
+  if (vertical) {
+    let x = GEO.margemX + geo.larguraUtil + 26;
+    let maxY: number = GEO.topo;
+    for (const b of barras) {
+      const h = Math.max(48, (Math.max(b.bornes, 3) + 1) * GEO.bornePasso);
+      itens.push({ id: b.id, x, y: GEO.topo, w: GEO.alturaBarra, h, bornes: b.bornes, vertical: true });
+      maxY = Math.max(maxY, GEO.topo + h);
+      x += GEO.alturaBarra + 22;
     }
-    itens.push({ id: b.id, x, y, w, bornes: b.bornes });
-    x += w + 12;
+    yFim = Math.max(maxY, geo.yBarras - GEO.canaleta + 10);
+  } else {
+    const largura = Math.max(geo.larguraUtil, 160);
+    let x = GEO.margemX;
+    let y = geo.yBarras;
+    for (const b of barras) {
+      const w = Math.max(40, (Math.max(b.bornes, 3) + 1) * GEO.bornePasso);
+      if (x + w > GEO.margemX + largura && x > GEO.margemX) {
+        x = GEO.margemX;
+        y += GEO.alturaBarra + 26;
+      }
+      itens.push({ id: b.id, x, y, w, h: GEO.alturaBarra, bornes: b.bornes, vertical: false });
+      x += w + 12;
+    }
+    yFim = y + GEO.alturaBarra;
   }
   // NEMA: barramento de fases vertical no centro.
   for (const [i, f] of nemaFases.entries()) {
     const col = geo.linhas.find((l) => l.padrao === "NEMA");
     if (!col) break;
-    itens.push({ id: `F:${f}`, x: geo.centroNEMA - GEO.barramentoNEMA / 2 + i * (GEO.barramentoNEMA / nemaFases.length), y: col.y - 18, w: GEO.barramentoNEMA / nemaFases.length, bornes: 1 });
+    const w = GEO.barramentoNEMA / nemaFases.length;
+    itens.push({ id: `F:${f}`, x: geo.centroNEMA - GEO.barramentoNEMA / 2 + i * w, y: col.y - 18, w, h: 10, bornes: 1, vertical: false });
   }
-  return { itens, yFim: y + GEO.alturaBarra };
+  const larguraTotal = Math.max(...itens.map((b) => b.x + b.w), GEO.margemX + geo.larguraUtil) + 24;
+  return { itens, yFim, vertical, larguraTotal };
+}
+
+/** Onde os cabos do padrão entram: por cima (canto superior esquerdo) ou por baixo. */
+export function pontoEntrada(q: QuadroDados, condutor: Condutor, yFim: number) {
+  const i = ["R", "S", "T", "N", "PE"].indexOf(condutor);
+  return q.modelo.saidaCabos === "cima" ? { x: 8 + i * 7, y: 6 } : { x: 8 + i * 7, y: yFim + 22 };
 }
 
 export function posicaoPonto(
@@ -1104,10 +1140,8 @@ export function posicaoPonto(
   barras: Barra[],
 ): { x: number; y: number } | null {
   switch (p.k) {
-    case "entrada": {
-      const i = ["R", "S", "T", "N", "PE"].indexOf(p.condutor);
-      return { x: 8 + i * 7, y: 6 };
-    }
+    case "entrada":
+      return pontoEntrada(q, p.condutor, q.modelo.saidaCabos === "cima" ? 0 : layoutBarras(q, barras, geo).yFim);
     case "carcaca":
       return { x: 4, y: geo.yBarras + 10 };
     case "term": {
@@ -1121,6 +1155,7 @@ export function posicaoPonto(
       const lay = layoutBarras(q, barras, geo).itens.find((b) => b.id === p.barra);
       if (!lay) return null;
       if (p.barra.startsWith("F:")) return { x: lay.x + lay.w / 2, y: lay.y };
+      if (lay.vertical) return { x: lay.x, y: lay.y + GEO.bornePasso * Math.max(1, p.borne) - 2 };
       return { x: lay.x + GEO.bornePasso * Math.max(1, p.borne) - 2, y: lay.y };
     }
     case "saida":

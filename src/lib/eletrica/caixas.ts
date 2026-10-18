@@ -14,9 +14,202 @@ export type MaterialCaixa = "pvc" | "metalico";
 export type GrauIP = "IP40" | "IP54" | "IP65";
 export type Instalacao = "embutir" | "sobrepor";
 
+export type Orientacao = "horizontal" | "vertical" | "quadrado";
+export type TipoPorta = "branca" | "fume" | "transparente" | "chapa" | "sem";
+
+export const NOME_ORIENTACAO: Record<Orientacao, string> = {
+  horizontal: "Horizontal (largo e baixo)",
+  vertical: "Vertical (alto e estreito)",
+  quadrado: "Quadrado / padrão",
+};
+
+/**
+ * "Linhas de referência": imitam os quadros mais comuns no mercado brasileiro
+ * (sem marcas, logotipos nem códigos de produto). Definem a aparência no desenho.
+ */
+export interface LinhaModelo {
+  id: string;
+  nome: string;
+  descricao: string;
+  /** Estilo de mercado de referência (fabricantes citados só como referência). */
+  referencia: string;
+  padrao: PadraoCaixa;
+  instalacoes: Instalacao[];
+  material: MaterialCaixa;
+  ip: GrauIP;
+  porta: TipoPorta;
+  fechadura: boolean;
+  corCaixa: string;
+  corPorta: string;
+  corEspelho: string;
+  /** Faixa de capacidade usual (módulos DIN ou disjuntores NEMA). */
+  capacidade: [number, number];
+  orientacoes: Orientacao[];
+  obra?: boolean;
+}
+
+export const LINHAS: LinhaModelo[] = [
+  {
+    id: "pvc-branca",
+    nome: "Embutir PVC — porta branca lisa",
+    descricao: "O QDC residencial mais comum: caixa de embutir em termoplástico, porta branca lisa e espelho recortado.",
+    referencia: "estilo Tigre / Margirius / Steck",
+    padrao: "DIN",
+    instalacoes: ["embutir"],
+    material: "pvc",
+    ip: "IP40",
+    porta: "branca",
+    fechadura: false,
+    corCaixa: "#f4f4f2",
+    corPorta: "#fbfbfa",
+    corEspelho: "#f1f1ef",
+    capacidade: [4, 72],
+    orientacoes: ["horizontal", "quadrado", "vertical"],
+  },
+  {
+    id: "pvc-fume",
+    nome: "Embutir PVC — porta fumê",
+    descricao: "Caixa de embutir com porta fumê (translúcida): dá para ver os disjuntores com a porta fechada.",
+    referencia: "estilo Schneider / Steck",
+    padrao: "DIN",
+    instalacoes: ["embutir"],
+    material: "pvc",
+    ip: "IP40",
+    porta: "fume",
+    fechadura: false,
+    corCaixa: "#eceeef",
+    corPorta: "#334155",
+    corEspelho: "#f3f4f6",
+    capacidade: [8, 54],
+    orientacoes: ["horizontal", "quadrado", "vertical"],
+  },
+  {
+    id: "pvc-sobrepor",
+    nome: "Sobrepor PVC — porta branca",
+    descricao: "Caixa de sobrepor em termoplástico, para parede pronta ou alvenaria sem embutimento.",
+    referencia: "estilo Tigre / Steck / Cemar",
+    padrao: "DIN",
+    instalacoes: ["sobrepor"],
+    material: "pvc",
+    ip: "IP40",
+    porta: "branca",
+    fechadura: false,
+    corCaixa: "#f1f1ee",
+    corPorta: "#fafaf8",
+    corEspelho: "#eeeeeb",
+    capacidade: [4, 54],
+    orientacoes: ["horizontal", "quadrado", "vertical"],
+  },
+  {
+    id: "metal-7035",
+    nome: "Metálico de sobrepor — cinza RAL 7035",
+    descricao: "Caixa em chapa de aço pintada cinza claro (RAL 7035), porta com fechadura. Comum em comércio, condomínio e indústria leve.",
+    referencia: "estilo Cemar / Moratori",
+    padrao: "DIN",
+    instalacoes: ["sobrepor", "embutir"],
+    material: "metalico",
+    ip: "IP54",
+    porta: "chapa",
+    fechadura: true,
+    corCaixa: "#d6d6cf",
+    corPorta: "#d9d9d2",
+    corEspelho: "#cfd0c9",
+    capacidade: [12, 144],
+    orientacoes: ["horizontal", "quadrado", "vertical"],
+  },
+  {
+    id: "nema-metalico",
+    nome: "NEMA metálico com barramento",
+    descricao: "Caixa metálica com barramento de fases para disjuntores NEMA (plug-in) e trilho DIN auxiliar para DR/DPS.",
+    referencia: "estilo Cemar / Moratori / Margirius",
+    padrao: "NEMA",
+    instalacoes: ["embutir", "sobrepor"],
+    material: "metalico",
+    ip: "IP40",
+    porta: "chapa",
+    fechadura: false,
+    corCaixa: "#d4d4cd",
+    corPorta: "#d8d8d1",
+    corEspelho: "#cdcdc6",
+    capacidade: [3, 50],
+    orientacoes: ["vertical"],
+  },
+  {
+    id: "centro-distribuicao",
+    nome: "Centro de distribuição (porta transparente)",
+    descricao: "Centro de distribuição compacto de sobrepor ou embutir, com porta transparente e espelho — muito usado em reformas e salas comerciais.",
+    referencia: "estilo Schneider / Siemens / Steck",
+    padrao: "DIN",
+    instalacoes: ["sobrepor", "embutir"],
+    material: "pvc",
+    ip: "IP40",
+    porta: "transparente",
+    fechadura: false,
+    corCaixa: "#eef0f2",
+    corPorta: "#cbd5e1",
+    corEspelho: "#f4f5f7",
+    capacidade: [4, 36],
+    orientacoes: ["horizontal", "quadrado"],
+  },
+  {
+    id: "obra-canteiro",
+    nome: "Quadro de obra / canteiro",
+    descricao: "Quadro provisório de canteiro: caixa robusta de sobrepor, IP54+, porta com fechadura e sinalização de advertência (tomadas industriais à parte).",
+    referencia: "estilo quadros de obra de mercado (Cemar / Steck)",
+    padrao: "DIN",
+    instalacoes: ["sobrepor"],
+    material: "metalico",
+    ip: "IP65",
+    porta: "chapa",
+    fechadura: true,
+    corCaixa: "#f59e0b",
+    corPorta: "#fbbf24",
+    corEspelho: "#e5e7eb",
+    capacidade: [8, 36],
+    orientacoes: ["vertical", "quadrado"],
+    obra: true,
+  },
+  {
+    id: "ip65-transparente",
+    nome: "IP65 — porta transparente (área externa)",
+    descricao: "Caixa estanque IP65 de sobrepor com porta transparente e vedação — área externa, garagem, piscina.",
+    referencia: "estilo Steck / Schneider",
+    padrao: "DIN",
+    instalacoes: ["sobrepor"],
+    material: "pvc",
+    ip: "IP65",
+    porta: "transparente",
+    fechadura: false,
+    corCaixa: "#d4d4d8",
+    corPorta: "#bfdbfe",
+    corEspelho: "#e4e4e7",
+    capacidade: [4, 54],
+    orientacoes: ["horizontal", "quadrado", "vertical"],
+  },
+];
+
+const LINHA_POR_ID = new Map(LINHAS.map((l) => [l.id, l]));
+export function linhaModelo(id: string | null | undefined) {
+  return id ? LINHA_POR_ID.get(id) : undefined;
+}
+
+/**
+ * Orientação pela proporção real da caixa (trilho ≈ 125 mm de altura, módulo 18 mm):
+ * altura/largura < 1,2 → horizontal; > 1,6 → vertical; senão quadrado.
+ */
+export function orientacaoDoLayout(fileiras: number, modulos: number, padrao: PadraoCaixa = "DIN"): Orientacao {
+  if (padrao === "NEMA") return "vertical";
+  const h = fileiras * 125 + 80;
+  const w = modulos * 18 + 80;
+  const r = h / w;
+  return r < 1.2 ? "horizontal" : r > 1.6 ? "vertical" : "quadrado";
+}
+
 export interface Caixa {
   id: string;
   nome: string;
+  linha: string;
+  orientacao: Orientacao;
   padrao: PadraoCaixa;
   instalacao: Instalacao;
   material: MaterialCaixa;
@@ -50,7 +243,15 @@ const LAYOUTS_DIN: [capacidade: number, fileiras: number, modulos: number][] = [
   [6, 1, 6],
   [8, 1, 8],
   [12, 1, 12],
+  [12, 2, 6],
   [16, 2, 8],
+  [18, 3, 6],
+  [24, 3, 8],
+  [32, 4, 8],
+  [36, 4, 9],
+  [40, 5, 8],
+  [48, 6, 8],
+  [54, 6, 9],
   [18, 1, 18],
   [24, 2, 12],
   [28, 2, 14],
@@ -90,10 +291,6 @@ const LAYOUTS_NEMA: [capacidade: number, fileiras: number, posicoes: number, aux
   [50, 2, 25, 12],
 ];
 
-const REF_PVC = "Linhas de referência: Tigre, Steck, Schneider (Mini Pragma/Resi9), Margirius, Cemar";
-const REF_METAL = "Linhas de referência: Cemar, Moratori, Siemens, WEG, Steck (chapa)";
-const REF_NEMA = "Linhas de referência: Cemar, Moratori, Tigre, Margirius (padrão NEMA com barramento)";
-
 function medidasDIN(fileiras: number, modulos: number, instalacao: Instalacao, material: MaterialCaixa) {
   const largura = Math.round(modulos * 18 + (material === "metalico" ? 110 : 80));
   const altura = Math.round(fileiras * 125 + (material === "metalico" ? 110 : 80));
@@ -108,57 +305,59 @@ function medidasNEMA(posicoes: number, aux: number, instalacao: Instalacao) {
 
 function gerarCatalogo(): Caixa[] {
   const lista: Caixa[] = [];
-  for (const [cap, fil, mod] of LAYOUTS_DIN) {
-    const variantes: [Instalacao, MaterialCaixa, GrauIP][] = [];
-    if (cap <= 72) variantes.push(["embutir", "pvc", "IP40"], ["sobrepor", "pvc", "IP40"]);
-    if (cap <= 54 && fil <= 3) variantes.push(["sobrepor", "pvc", "IP65"]);
-    if (cap >= 12) variantes.push(["embutir", "metalico", "IP40"], ["sobrepor", "metalico", "IP40"]);
-    if (cap >= 24) variantes.push(["sobrepor", "metalico", "IP54"]);
-    for (const [inst, mat, ip] of variantes) {
-      const layout = `${fil}×${mod}`;
-      lista.push({
-        id: `din-${cap}-${fil}x${mod}-${inst}-${mat}-${ip.toLowerCase()}`,
-        nome: `${cap} módulos DIN (${layout}) — ${inst === "embutir" ? "embutir" : "sobrepor"} ${mat === "pvc" ? "PVC" : "metálico"} ${ip}`,
-        padrao: "DIN",
-        instalacao: inst,
-        material: mat,
-        ip,
-        fileiras: fil,
-        modulosPorFileira: mod,
-        trilhoAux: 0,
-        capacidade: cap,
-        // Caixas grandes e metálicas costumam vir com barramento/pente opcional — conferir.
-        barramento: mat === "metalico" && cap >= 24,
-        porta: !(mat === "pvc" && cap <= 8 && inst === "embutir"),
-        tampa: true,
-        medidas: medidasDIN(fil, mod, inst, mat),
-        referencia: mat === "pvc" ? REF_PVC : REF_METAL,
-      });
-    }
-  }
-  for (const [cap, fil, pos, aux] of LAYOUTS_NEMA) {
-    for (const [inst, mat] of [
-      ["embutir", "metalico"],
-      ["sobrepor", "metalico"],
-      ...(cap <= 24 ? ([["embutir", "pvc"]] as const) : []),
-    ] as [Instalacao, MaterialCaixa][]) {
-      lista.push({
-        id: `nema-${cap}-${inst}-${mat}`,
-        nome: `${cap} disjuntores NEMA${aux ? ` + ${aux} DIN` : ""} — ${inst} ${mat === "pvc" ? "PVC" : "metálico"}`,
-        padrao: "NEMA",
-        instalacao: inst,
-        material: mat,
-        ip: "IP40",
-        fileiras: fil,
-        modulosPorFileira: pos,
-        trilhoAux: aux,
-        capacidade: cap,
-        barramento: true,
-        porta: true,
-        tampa: true,
-        medidas: medidasNEMA(pos, aux, inst),
-        referencia: REF_NEMA,
-      });
+  for (const linha of LINHAS) {
+    const [cmin, cmax] = linha.capacidade;
+    for (const inst of linha.instalacoes) {
+      if (linha.padrao === "NEMA") {
+        for (const [cap, fil, pos, aux] of LAYOUTS_NEMA) {
+          if (cap < cmin || cap > cmax) continue;
+          lista.push({
+            id: `${linha.id}-${inst}-${cap}`,
+            nome: `${cap} disjuntores NEMA${aux ? ` + ${aux} DIN` : ""} — ${linha.nome}${linha.instalacoes.length > 1 ? ` (${inst})` : ""}`,
+            linha: linha.id,
+            orientacao: "vertical",
+            padrao: "NEMA",
+            instalacao: inst,
+            material: linha.material,
+            ip: linha.ip,
+            fileiras: fil,
+            modulosPorFileira: pos,
+            trilhoAux: aux,
+            capacidade: cap,
+            barramento: true,
+            porta: linha.porta !== "sem",
+            tampa: true,
+            medidas: medidasNEMA(pos, aux, inst),
+            referencia: linha.referencia,
+          });
+        }
+        continue;
+      }
+      for (const [cap, fil, mod] of LAYOUTS_DIN) {
+        if (cap < cmin || cap > cmax) continue;
+        const orientacao = orientacaoDoLayout(fil, mod);
+        if (!linha.orientacoes.includes(orientacao)) continue;
+        lista.push({
+          id: `${linha.id}-${inst}-${fil}x${mod}`,
+          nome: `${cap} módulos DIN (${fil}×${mod}, ${orientacao}) — ${linha.nome}${linha.instalacoes.length > 1 ? ` (${inst})` : ""}`,
+          linha: linha.id,
+          orientacao,
+          padrao: "DIN",
+          instalacao: inst,
+          material: linha.material,
+          ip: linha.ip,
+          fileiras: fil,
+          modulosPorFileira: mod,
+          trilhoAux: 0,
+          capacidade: cap,
+          // Caixas metálicas grandes costumam vir com barramento/pente opcional — conferir.
+          barramento: linha.material === "metalico" && cap >= 24,
+          porta: linha.porta !== "sem",
+          tampa: true,
+          medidas: medidasDIN(fil, mod, inst, linha.material),
+          referencia: linha.referencia,
+        });
+      }
     }
   }
   return lista;
@@ -210,9 +409,12 @@ export function capacidadeTotal(m: Parameters<typeof linhasDoModelo>[0]) {
 }
 
 /** Modelo do quadro a partir de uma caixa do catálogo. */
-export function modeloDaCaixa(c: Caixa): ModeloQuadro {
+export function modeloDaCaixa(c: Caixa, saidaCabos: "baixo" | "cima" = "baixo"): ModeloQuadro {
   return {
     caixaId: c.id,
+    linha: c.linha,
+    orientacao: c.orientacao,
+    saidaCabos,
     fileiras: c.fileiras,
     modulosPorFileira: c.modulosPorFileira,
     instalacao: c.instalacao,
@@ -230,7 +432,8 @@ export function modeloDaCaixa(c: Caixa): ModeloQuadro {
 export function caixaDoModelo(m: ModeloQuadro): Caixa | undefined {
   const exata = caixa(m.caixaId);
   if (exata) return exata;
-  return CAIXAS.find(
+  const linha = linhaDoModelo(m).id;
+  const candidatas = CAIXAS.filter(
     (c) =>
       c.padrao === m.padrao &&
       c.fileiras === m.fileiras &&
@@ -239,6 +442,28 @@ export function caixaDoModelo(m: ModeloQuadro): Caixa | undefined {
       c.material === m.material &&
       (m.padrao === "DIN" || c.trilhoAux === m.trilhoAux),
   );
+  return candidatas.find((c) => c.linha === linha) ?? candidatas[0];
+}
+
+/** Linha de referência (aparência) do modelo — deduzida para quadros antigos. */
+export function linhaDoModelo(m: Pick<ModeloQuadro, "linha" | "padrao" | "material" | "instalacao" | "ip">): LinhaModelo {
+  const direta = linhaModelo(m.linha);
+  if (direta) return direta;
+  const id =
+    m.padrao === "NEMA"
+      ? "nema-metalico"
+      : m.material === "metalico"
+        ? "metal-7035"
+        : m.ip === "IP65"
+          ? "ip65-transparente"
+          : m.instalacao === "sobrepor"
+            ? "pvc-sobrepor"
+            : "pvc-branca";
+  return linhaModelo(id)!;
+}
+
+export function orientacaoDoModelo(m: Pick<ModeloQuadro, "orientacao" | "fileiras" | "modulosPorFileira" | "padrao">): Orientacao {
+  return m.orientacao ?? orientacaoDoLayout(m.fileiras, m.modulosPorFileira, m.padrao);
 }
 
 export function descreverModelo(m: ModeloQuadro) {
@@ -251,6 +476,8 @@ export function descreverModelo(m: ModeloQuadro) {
 }
 
 export interface FiltroCaixa {
+  linha?: string | null;
+  orientacao?: Orientacao | null;
   padrao?: PadraoCaixa | null;
   instalacao?: Instalacao | null;
   material?: MaterialCaixa | null;
@@ -263,6 +490,8 @@ export interface FiltroCaixa {
 export function filtrarCaixas(f: FiltroCaixa) {
   return CAIXAS.filter(
     (c) =>
+      (!f.linha || c.linha === f.linha) &&
+      (!f.orientacao || c.orientacao === f.orientacao) &&
       (!f.padrao || c.padrao === f.padrao) &&
       (!f.instalacao || c.instalacao === f.instalacao) &&
       (!f.material || c.material === f.material) &&

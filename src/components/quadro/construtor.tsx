@@ -138,7 +138,7 @@ export function Construtor({
   const analise = useMemo(() => analisarQuadro(dados), [dados]);
   const ligacoes = useMemo(() => gerarLigacoes(dados, analise), [dados, analise]);
   const materiais = useMemo(() => listaMateriaisCompleta(dados, analise), [dados, analise]);
-  const [vista, setVista] = useState<"pecas" | "ligacoes">("pecas");
+  const [vista, setVista] = useState<"porta" | "espelho" | "montagem" | "ligacoes">("montagem");
   const [animar, setAnimar] = useState(false);
   const [ligSel, setLigSel] = useState<string | null>(null);
   const ligacaoSelecionada = ligSel ? ligacoes.ligacoes.find((l) => l.id === ligSel) : undefined;
@@ -411,14 +411,16 @@ export function Construtor({
           <div className="flex gap-1 rounded-xl bg-surface-2 p-1">
             {(
               [
-                ["pecas", "Peças"],
+                ["porta", "Com porta"],
+                ["espelho", "Espelho"],
+                ["montagem", "Montagem"],
                 ["ligacoes", "Ligações"],
               ] as const
             ).map(([v, r]) => (
               <button
                 key={v}
                 onClick={() => setVista(v)}
-                className={`rounded-lg px-3 py-1 text-sm font-medium ${vista === v ? "bg-surface shadow-sm" : "text-muted"}`}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium sm:text-sm ${vista === v ? "bg-surface shadow-sm" : "text-muted"}`}
               >
                 {r}
               </button>
@@ -440,21 +442,27 @@ export function Construtor({
           </div>
         </div>
         <p className="no-print px-3 pt-2 text-xs text-muted">
-          {vista === "pecas"
-            ? "Toque num espaço vazio para colocar uma peça, ou numa peça para editar."
-            : "Toque num cabo para ver de onde sai, para onde vai, cor e seção."}
+          {vista === "ligacoes"
+            ? "Toque num cabo para ver de onde sai, para onde vai, cor e seção."
+            : vista === "porta"
+              ? "Frente do quadro fechado. Toque na porta para abrir."
+              : vista === "espelho"
+                ? "Sem porta: o espelho esconde bornes e cabos, como no quadro real. Toque numa peça para editar."
+                : "Sem espelho: trilhos, bornes e barras à mostra. Toque num espaço vazio para colocar uma peça."}
         </p>
         <div className="overflow-x-auto bg-surface-2 p-4">
           <div className="mx-auto w-max">
-            {vista === "pecas" ? (
+            {vista !== "ligacoes" ? (
               <QuadroVisual
                 dados={dados}
                 nome={nome}
                 escala={ESCALAS[escala]}
+                vista={vista}
                 selecionado={compSel?.id ?? null}
                 destaques={destaques}
                 aoTocarVazio={(fileira, posicao) => setSel({ tipo: "vazio", fileira, posicao })}
                 aoTocarPeca={(cid) => setSel({ tipo: "peca", id: cid })}
+                aoAbrirPorta={() => setVista("espelho")}
               />
             ) : (
               <LigacoesVisual

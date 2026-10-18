@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAIXAS, cabeComReserva, caixaDoModelo, capacidadeTotal, filtrarCaixas, linhasDoModelo, modeloDaCaixa, trocarCaixa } from "./caixas";
+import { CAIXAS, LINHAS, cabeComReserva, caixaDoModelo, capacidadeTotal, filtrarCaixas, linhasDoModelo, modeloDaCaixa, trocarCaixa } from "./caixas";
 import { EXEMPLOS, quadroExemplo } from "./exemplos";
 import {
   ajustarFasesAoPente,
@@ -34,7 +34,13 @@ describe("caixas", () => {
     for (const c of [4, 6, 8, 12, 16, 18, 24, 28, 32, 36, 40, 44, 48, 54, 56, 60, 72, 96, 120]) expect(caps.has(c)).toBe(true);
     for (const c of din) expect(c.fileiras * c.modulosPorFileira).toBe(c.capacidade);
     const de48 = new Set(din.filter((c) => c.capacidade === 48).map((c) => `${c.fileiras}x${c.modulosPorFileira}`));
-    expect([...de48].sort()).toEqual(["2x24", "3x16", "4x12"]);
+    expect([...de48].sort()).toEqual(["2x24", "3x16", "4x12", "6x8"]);
+    // Mesma capacidade em formatos diferentes: 24 = 2×12 (horizontal) ou 3×8 (vertical)
+    const de24 = filtrarCaixas({ padrao: "DIN", capacidadeMin: 24 }).filter((c) => c.capacidade === 24);
+    expect(de24.find((c) => c.fileiras === 2)?.orientacao).toBe("horizontal");
+    expect(de24.find((c) => c.fileiras === 3)?.orientacao).toBe("vertical");
+    // Cada linha de referência tem caixas
+    for (const l of LINHAS) expect(filtrarCaixas({ linha: l.id }).length, l.id).toBeGreaterThan(0);
     expect(filtrarCaixas({ padrao: "NEMA" }).length).toBeGreaterThan(5);
     expect(new Set(CAIXAS.map((c) => c.id)).size).toBe(CAIXAS.length);
   });

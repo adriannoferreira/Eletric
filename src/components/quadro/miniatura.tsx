@@ -7,7 +7,7 @@ export function MiniaturaQuadro({ dados }: { dados: QuadroDados }) {
   const escala = Math.min(0.45, 260 / (largura + 60));
   return (
     <div className="pointer-events-none flex h-36 items-center justify-center overflow-hidden">
-      <QuadroVisual dados={dados} escala={escala} />
+      <QuadroVisual dados={dados} escala={escala} vista="espelho" />
     </div>
   );
 }

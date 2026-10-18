@@ -820,6 +820,9 @@ export function posicionar(
           material: "metalico",
           ip: pref.ip ?? "IP40",
           trilhoAux: 0,
+          linha: "metal-7035",
+          orientacao: null,
+          saidaCabos: "baixo",
         },
         componentes: comps,
         aviso,
@@ -827,7 +830,19 @@ export function posicionar(
   }
   const comps = tentar(10, 36) ?? [];
   return {
-    modelo: { caixaId: null, fileiras: 10, modulosPorFileira: 36, instalacao: "sobrepor", padrao: "DIN", material: "metalico", ip: "IP40", trilhoAux: 0 },
+    modelo: {
+      caixaId: null,
+      fileiras: 10,
+      modulosPorFileira: 36,
+      instalacao: "sobrepor",
+      padrao: "DIN",
+      material: "metalico",
+      ip: "IP40",
+      trilhoAux: 0,
+      linha: "metal-7035",
+      orientacao: null,
+      saidaCabos: "baixo",
+    },
     componentes: comps,
   };
 }

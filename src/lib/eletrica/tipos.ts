@@ -63,6 +63,12 @@ export const ModeloSchema = z.object({
   material: z.enum(["pvc", "metalico"]).catch("pvc"),
   ip: z.enum(["IP40", "IP54", "IP65"]).catch("IP40"),
   trilhoAux: z.number().int().min(0).max(24).catch(0),
+  /** Linha de referência (aparência: cor, porta, espelho). Vazio = deduzida do material/instalação. */
+  linha: z.string().nullable().catch(null),
+  /** Orientação da caixa. Vazio = deduzida da proporção trilhos × módulos. */
+  orientacao: z.enum(["horizontal", "vertical", "quadrado"]).nullable().catch(null),
+  /** Por onde entram/saem os cabos (eletrodutos). */
+  saidaCabos: z.enum(["baixo", "cima"]).catch("baixo"),
 });
 export type ModeloQuadro = z.infer<typeof ModeloSchema>;
 

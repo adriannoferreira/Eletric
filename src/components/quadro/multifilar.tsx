@@ -115,14 +115,13 @@ export function Multifilar({
   const Y_CARGA = Y_DJ + 46;
   const ALT_CARGA = 70;
 
-  let gx = XG0;
-  const grupos = m.grupos.map((g) => {
-    const inicio = gx;
-    const colX0 = gx + (g.dr ? 12 + g.dr.linha.length * 11 + 14 : 8);
+  const grupos = m.grupos.reduce<{ g: (typeof m.grupos)[number]; inicio: number; colX0: number; fim: number }[]>((acc, g) => {
+    const inicio = acc.length ? acc[acc.length - 1].fim + 18 : XG0;
+    const colX0 = inicio + (g.dr ? 12 + g.dr.linha.length * 11 + 14 : 8);
     const fim = colX0 + Math.max(1, g.colunas.length) * COLW;
-    gx = fim + 18;
-    return { g, inicio, colX0, fim };
-  });
+    return [...acc, { g, inicio, colX0, fim }];
+  }, []);
+  const gx = grupos.length ? grupos[grupos.length - 1].fim + 18 : XG0;
   const XMAX = Math.max(gx + 30, selo ? 760 : 480);
   const altura = Y_CARGA + ALT_CARGA + (selo ? 110 : 20);
 
