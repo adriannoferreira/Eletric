@@ -9,6 +9,7 @@
  */
 import { analisarQuadro, correnteProjeto, dimensionar, disjuntorMinimo, tensaoDoCircuito } from "./calculo";
 import { concessionaria, LIMITES_CATEGORIA_KVA } from "./concessionarias";
+import { ID_EQUATORIAL_PA, type PadraoEquatorial, padraoEquatorial, secaoFaseCliente } from "./equatorial";
 import { type Caixa, caixa as caixaPorId, filtrarCaixas, modeloDaCaixa } from "./caixas";
 import { ajustarFasesAoPente } from "./ligacoes";
 import { modulosOcupados, peca, type Peca } from "./pecas";
@@ -425,6 +426,10 @@ export interface Demanda {
   disjuntorGeralA: number | null;
   secaoEntradaMm2: number | null;
   alertas: Alerta[];
+  /** Disjuntor do padrão de entrada pela norma da concessionária (Equatorial PA: Tabela 2). */
+  disjuntorPadraoA: number | null;
+  /** Enquadramento oficial quando a concessionária é a Equatorial Pará (NT.00001 rev. 09). */
+  equatorial: PadraoEquatorial | null;
 }
 
 const FP_DEMANDA = 0.92;
@@ -437,7 +442,7 @@ const FP_DEMANDA = 0.92;
 export function calcularDemanda(
   circuitos: Circuito[],
   tensoes: { tensaoFN: number; tensaoFF: number },
-  extra: { fornecimentoExistente?: string; disjuntorExistenteA?: number | null } = {},
+  extra: { fornecimentoExistente?: string; disjuntorExistenteA?: number | null; concessionaria?: string | null } = {},
 ): Demanda {
   const alertas: Alerta[] = [];
   const ilumTug = circuitos.filter((c) => c.tipo !== "tue").reduce((s, c) => s + c.potenciaW, 0);
@@ -449,8 +454,8 @@ export function calcularDemanda(
   const fdIT = ilumTug > 0 ? fatorIluminacaoTug(ilumTug / 1000) : 0;
   const fdAp = fatorAparelhos(aparelhos.length);
   // Ar-condicionado residencial: fator 1 (todos podem funcionar juntos) — referência.
-  const demandaW = ilumTug * fdIT + aparelhosW * fdAp + arW;
-  const demandaKVA = demandaW / 1000 / FP_DEMANDA;
+  let demandaW = ilumTug * fdIT + aparelhosW * fdAp + arW;
+  let demandaKVA = demandaW / 1000 / FP_DEMANDA;
 
   // Categoria mínima pelas cargas
   let categoria: Categoria = "monofasico";
@@ -470,7 +475,19 @@ export function calcularDemanda(
     categoria = "trifasico";
     motivo = `Demanda de ${demandaKVA.toFixed(1)} kVA acima da referência de ${LIMITES_CATEGORIA_KVA.bifasico} kVA para bifásico.`;
   }
-  if (demandaKVA > LIMITES_CATEGORIA_KVA.trifasico) {
+  const eq = extra.concessionaria === ID_EQUATORIAL_PA ? padraoEquatorial(circuitos) : null;
+  if (eq) {
+    // Regra oficial da Equatorial PA: tipo de ligação pela carga instalada e pelas restrições de equipamentos.
+    const cat = eq.categoria;
+    categoria = cat.tipo === "media_tensao" ? "trifasico" : cat.tipo;
+    motivo = cat.motivos.join(" ");
+    // Demanda estimada pelas Tabelas 4 e 5 da NT.00001 (FP 1 no mono/bi, 0,92 no tri).
+    demandaW = eq.demanda.demandaKW * 1000;
+    demandaKVA = eq.demanda.demandaKVA;
+    for (const b of cat.bloqueios) alertas.push({ nivel: "erro", mensagem: b });
+    for (const e of cat.estudos) alertas.push({ nivel: "aviso", mensagem: e });
+    for (const a of cat.avisos) alertas.push({ nivel: "aviso", mensagem: a });
+  } else if (demandaKVA > LIMITES_CATEGORIA_KVA.trifasico) {
     alertas.push({
       nivel: "erro",
       mensagem: `Demanda de ${demandaKVA.toFixed(1)} kVA acima da referência de ${LIMITES_CATEGORIA_KVA.trifasico} kVA para atendimento em BT — pode exigir subestação/média tensão. Consulte a concessionária.`,
@@ -478,18 +495,27 @@ export function calcularDemanda(
   }
 
   // Corrente de demanda por fase
-  const va = demandaW / FP_DEMANDA;
+  const va = eq ? demandaKVA * 1000 : demandaW / FP_DEMANDA;
   const correnteA =
     categoria === "monofasico"
       ? va / tensoes.tensaoFN
       : categoria === "bifasico"
         ? va / (2 * tensoes.tensaoFN)
         : va / (Math.sqrt(3) * tensoes.tensaoFF);
-  const disjuntorGeralA = disjuntorMinimo(Math.max(correnteA, 1)) ?? null;
-  // Seção mínima que comporta o disjuntor geral (critério de capacidade, B1).
-  const secaoEntradaMm2 = disjuntorGeralA ? secaoParaCorrente(disjuntorGeralA, categoria === "trifasico" ? 3 : 2) : null;
+  const linhaEq = eq?.categoria.linha ?? null;
+  const disjuntorPadraoA = linhaEq?.disjuntorA ?? null;
+  // Geral do QDC pela corrente de demanda; com a Equatorial, nunca acima do disjuntor do padrão (NT.00001 6.3.8.6).
+  const pelaDemanda = disjuntorMinimo(Math.max(correnteA, 1)) ?? null;
+  const disjuntorGeralA =
+    disjuntorPadraoA != null ? Math.min(pelaDemanda ?? disjuntorPadraoA, disjuntorPadraoA) : pelaDemanda;
+  // Seção mínima que comporta o disjuntor geral (critério de capacidade, B1) ou a da Tabela 2 da Equatorial.
+  const secaoEntradaMm2 = linhaEq
+    ? secaoFaseCliente(linhaEq.condutorCliente)
+    : disjuntorGeralA
+      ? secaoParaCorrente(disjuntorGeralA, categoria === "trifasico" ? 3 : 2)
+      : null;
 
-  if (!disjuntorGeralA) {
+  if (!disjuntorGeralA && !eq) {
     alertas.push({ nivel: "erro", mensagem: `Corrente de demanda de ${correnteA.toFixed(0)} A acima de 125 A — fora do alcance de disjuntores DIN.` });
   }
   const ordem: Record<string, number> = { monofasico: 1, bifasico: 2, trifasico: 3 };
@@ -507,11 +533,19 @@ export function calcularDemanda(
       mensagem: `Disjuntor do padrão existente (${extra.disjuntorExistenteA} A) menor que o estimado pela demanda (${disjuntorGeralA} A). Avalie aumento de carga junto à concessionária.`,
     });
   }
-  alertas.push({
-    nivel: "info",
-    mensagem:
-      "Fatores de demanda e limites de categoria são referências genéricas de pré-projeto — conferir na norma da concessionária, que define também o disjuntor e o cabo do padrão.",
-  });
+  alertas.push(
+    eq
+      ? {
+          nivel: "info",
+          mensagem:
+            "Tipo de ligação, disjuntor do padrão e condutor de entrada pela Equatorial Pará — NT.00001 rev. 09, item 6.2 e Tabela 2 (dimensionamento pela carga instalada). A demanda é estimativa auxiliar (Tabelas 4 e 5).",
+        }
+      : {
+          nivel: "info",
+          mensagem:
+            "Fatores de demanda e limites de categoria são referências genéricas de pré-projeto — conferir na norma da concessionária, que define também o disjuntor e o cabo do padrão.",
+        },
+  );
 
   return {
     cargaInstaladaW: ilumTug + aparelhosW + arW,
@@ -528,6 +562,8 @@ export function calcularDemanda(
     disjuntorGeralA,
     secaoEntradaMm2,
     alertas,
+    disjuntorPadraoA,
+    equatorial: eq,
   };
 }
 
@@ -716,6 +752,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
     componentes,
     circuitos: circuitosFinais,
     projeto: p,
+    concessionaria: null,
     memorial: null,
     compras: [],
     inspecoes: [],
@@ -732,6 +769,7 @@ export function gerarQuadro(p: ProjetoObra): ResultadoProjeto {
       componentes: montado.componentes,
       circuitos: circuitosFinais,
       projeto: p,
+      concessionaria: null,
       memorial: null,
       compras: [],
       inspecoes: [],

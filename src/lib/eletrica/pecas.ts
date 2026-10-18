@@ -67,8 +67,9 @@ function disjuntores(): Peca[] {
           norma: "NBR NM 60898 / IEC 60898-1",
         });
       // Correntes acima de 63 A: linhas de "alta corrente" com 1,5 módulo por polo.
-      if (polos > 1 && curva === "C")
-        for (const In of CORRENTES_ALTAS)
+      // 1P 70/80 A: geral de padrão monofásico (ex.: Equatorial PA, Tabela 2 — até 80 A).
+      if (curva === "C")
+        for (const In of polos === 1 ? CORRENTES_ALTAS.filter((i) => i <= 80) : CORRENTES_ALTAS)
           lista.push({
             id: `dj-${polos}p-${curva}${In}`,
             tipo: "disjuntor",

@@ -346,6 +346,8 @@ export const QuadroDadosSchema = z.object({
   circuitos: z.array(CircuitoSchema).catch([]),
   /** Dados da obra quando o quadro foi gerado pelo assistente de projeto. */
   projeto: ProjetoObraSchema.nullable().catch(null),
+  /** Concessionária do quadro montado do zero (com projeto da obra, vale a da obra). null = Equatorial Pará. */
+  concessionaria: z.string().nullable().catch(null),
   /** Último memorial descritivo gerado pela IA (vale também para quadros montados à mão). */
   memorial: z.object({ texto: z.string(), geradoEm: z.string() }).nullable().catch(null),
   /** Itens da lista de compras já comprados (chaves de `montarListaCompras`). */
@@ -379,6 +381,7 @@ export function novoQuadro(
     componentes: [],
     circuitos: [],
     projeto: null,
+    concessionaria: null,
     memorial: null,
     compras: [],
     inspecoes: [],

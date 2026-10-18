@@ -8,8 +8,12 @@ import { salvarMemorial } from "@/app/(app)/quadros/actions";
 import { Sk } from "@/components/skeleton";
 import { lerStream, TextoIA } from "@/components/texto-ia";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
+import { peca } from "@/lib/eletrica/pecas";
 import type { QuadroDados } from "@/lib/eletrica/tipos";
+import { CONCESSIONARIAS } from "@/lib/eletrica/concessionarias";
+import { concessionariaDoQuadro } from "@/lib/eletrica/equatorial";
 import { ListaMateriais } from "./materiais";
+import { BlocoPadraoEquatorial } from "./padrao-equatorial";
 import { BlocoDemanda, demandaDoQuadro, descreverObra, ListaSeguranca, TabelaCargas } from "./projeto-blocos";
 import { descreverQuadro } from "./revisao-ia";
 import { Unifilar } from "./unifilar";
@@ -43,6 +47,7 @@ export function PainelProjeto({
   analise,
   alterado,
   aoMudarMemorial,
+  aoMudarConcessionaria,
   aoVerUnifilar,
   botaoOrcamento,
 }: {
@@ -52,6 +57,7 @@ export function PainelProjeto({
   analise: AnaliseQuadro;
   alterado: boolean;
   aoMudarMemorial: (m: QuadroDados["memorial"]) => void;
+  aoMudarConcessionaria: (id: string) => void;
   aoVerUnifilar: () => void;
   botaoOrcamento: React.ReactNode;
 }) {
@@ -111,15 +117,37 @@ export function PainelProjeto({
       </div>
 
       {!dados.projeto && (
-        <p className="rounded-xl bg-info-soft p-3 text-sm text-info">
-          Quadro montado do zero: a demanda abaixo é calculada pelos circuitos que você criou. Concessionária e
-          ambientes não foram informados — use o “Gerar projeto da obra” quando quiser a previsão completa pela NBR 5410.
-        </p>
+        <div className="space-y-2 rounded-xl bg-info-soft p-3 text-sm text-info">
+          <p>
+            Quadro montado do zero: a demanda abaixo é calculada pelos circuitos que você criou. Ambientes não foram
+            informados — use o “Gerar projeto da obra” quando quiser a previsão completa pela NBR 5410.
+          </p>
+          <label className="flex flex-wrap items-center gap-2 text-fg">
+            <span className="font-medium">Concessionária:</span>
+            <select
+              value={concessionariaDoQuadro(dados)}
+              onChange={(e) => aoMudarConcessionaria(e.target.value)}
+              className="input w-auto py-1.5"
+            >
+              {CONCESSIONARIAS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
 
       <Secao titulo="Demanda e entrada de energia">
         <BlocoDemanda dados={dados} demanda={demanda} />
       </Secao>
+
+      {demanda.equatorial && (
+        <Secao titulo="Padrão de entrada (Equatorial PA)">
+          <BlocoPadraoEquatorial padrao={demanda.equatorial} quadroId={id} disjuntorQdcA={geralDoQuadro(dados)} />
+        </Secao>
+      )}
 
       <Secao titulo="Diagrama unifilar">
         <div className="overflow-x-auto rounded-xl border border-border bg-surface p-2">
@@ -180,4 +208,10 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
       {children}
     </section>
   );
+}
+
+/** Corrente nominal do disjuntor geral do QDC (componente marcado como geral). */
+function geralDoQuadro(dados: QuadroDados) {
+  const g = dados.componentes.find((c) => c.geral && peca(c.pecaId)?.tipo === "disjuntor");
+  return g ? (peca(g.pecaId)?.correnteNominal ?? null) : null;
 }

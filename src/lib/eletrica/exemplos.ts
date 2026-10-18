@@ -35,7 +35,7 @@ const carga = (tipo: string, ambienteId: string | null, extra: Partial<Carga> = 
 
 const obra = (o: Partial<Obra>): Obra => ({
   tipoImovel: "casa",
-  concessionaria: "outra",
+  concessionaria: "equatorial-pa",
   tensoes: "127/220",
   esquema: "TN-C-S",
   fornecimentoExistente: "desconhecido",
@@ -59,11 +59,10 @@ function apartamento(): ProjetoObra {
   const banho = amb("Banheiro", "banheiro", 3, 7, 7);
   const servico = amb("Área de serviço", "area_servico", 3, 7, 5);
   return {
-    obra: obra({ tipoImovel: "apartamento", tensoes: "127/220", observacoes: "Apartamento pequeno, chuveiro 127 V." }),
+    obra: obra({ tipoImovel: "apartamento", tensoes: "127/220", observacoes: "Apartamento pequeno, chuveiro 127 V de 4.400 W (aparelho acima de 5 kVA não é permitido no monofásico — NT.00001 6.2.1.1)." }),
     ambientes: [sala, quarto, cozinha, banho, servico],
     cargas: [
-      carga("chuveiro", banho.id, { nome: "Chuveiro 127 V", potenciaW: 5400, tensaoV: 127 }),
-      carga("microondas", cozinha.id),
+      carga("chuveiro", banho.id, { nome: "Chuveiro 127 V", potenciaW: 4400, tensaoV: 127 }),
     ],
   };
 }
@@ -73,20 +72,18 @@ function casaMedia(): ProjetoObra {
   const q1 = amb("Suíte", "quarto", 14, 15, 10);
   const q2 = amb("Quarto 2", "quarto", 10, 13, 9);
   const b1 = amb("Banheiro suíte", "banheiro", 4, 8, 11);
-  const b2 = amb("Banheiro social", "banheiro", 3.5, 7.5, 8);
   const coz = amb("Cozinha", "cozinha", 10, 13, 5);
   const serv = amb("Área de serviço", "area_servico", 5, 9, 4);
-  const var_ = amb("Varanda", "varanda", 6, 10, 7);
   return {
-    obra: obra({ tipoImovel: "casa", tensoes: "127/220", observacoes: "Casa térrea, 2 chuveiros e 2 ar-condicionado." }),
-    ambientes: [sala, q1, q2, b1, b2, coz, serv, var_],
+    obra: obra({
+      tipoImovel: "casa",
+      tensoes: "127/220",
+      observacoes: "Casa térrea, 1 chuveiro 220 V de 6.800 W (até 7 kVA) e 1 ar-condicionado. Bifásico na Equatorial PA: acima de 10 kW até 15 kW (NT.00001 6.2.1.2).",
+    }),
+    ambientes: [sala, q1, q2, b1, coz, serv],
     cargas: [
-      carga("chuveiro", b1.id),
-      carga("chuveiro", b2.id),
+      carga("chuveiro", b1.id, { nome: "Chuveiro 220 V", potenciaW: 6800 }),
       carga("ar", q1.id, { nome: "Ar-condicionado 12 000 BTU" }),
-      carga("ar", q2.id, { nome: "Ar-condicionado 9 000 BTU", potenciaW: 1000 }),
-      carga("microondas", coz.id),
-      carga("lavaroupa", serv.id),
     ],
   };
 }
@@ -103,7 +100,7 @@ function casaTrifasica(): ProjetoObra {
   const serv = amb("Lavanderia", "lavanderia", 6, 10, 5);
   const gar = amb("Garagem", "garagem", 30, 22, 8);
   return {
-    obra: obra({ tipoImovel: "sobrado", tensoes: "220/380", observacoes: "Casa grande em rede 220/380 V." }),
+    obra: obra({ tipoImovel: "sobrado", tensoes: "127/220", observacoes: "Casa grande, trifásico 220/127 V (padrão da Equatorial no Pará)." }),
     ambientes: [sala, q1, q2, q3, b1, b2, b3, coz, serv, gar],
     cargas: [
       carga("chuveiro", b1.id),
@@ -145,10 +142,10 @@ function comercio(): ProjetoObra {
 }
 
 export const EXEMPLOS: { id: string; nome: string; descricao: string; projeto: () => ProjetoObra }[] = [
-  { id: "apto-mono", nome: "Apartamento pequeno — monofásico 127 V", descricao: "1 quarto, chuveiro 127 V, cozinha e área de serviço.", projeto: apartamento },
-  { id: "casa-bi", nome: "Casa média — bifásico 127/220 V", descricao: "2 quartos (1 suíte), 2 chuveiros 220 V e 2 ar-condicionados.", projeto: casaMedia },
-  { id: "casa-tri", nome: "Casa grande — trifásico 220/380 V", descricao: "3 suítes, cozinha gourmet com cooktop e forno, 3 ar-condicionados.", projeto: casaTrifasica },
-  { id: "comercio", nome: "Pequeno comércio — 127/220 V", descricao: "Salão de vendas, escritório, copa e banheiro, com ar-condicionado.", projeto: comercio },
+  { id: "apto-mono", nome: "Apartamento pequeno — monofásico 127 V", descricao: "1 quarto, chuveiro 127 V (4.400 W), cozinha e área de serviço — até 10 kW.", projeto: apartamento },
+  { id: "casa-bi", nome: "Casa média — bifásico 220/127 V", descricao: "2 quartos (1 suíte), 1 chuveiro 220 V e 1 ar-condicionado — de 10 a 15 kW.", projeto: casaMedia },
+  { id: "casa-tri", nome: "Casa grande — trifásico 220/127 V", descricao: "3 suítes, cozinha gourmet com cooktop e forno, 3 ar-condicionados.", projeto: casaTrifasica },
+  { id: "comercio", nome: "Pequeno comércio — bifásico 220/127 V", descricao: "Salão de vendas, escritório, copa e banheiro, com ar-condicionado.", projeto: comercio },
 ];
 
 export function quadroExemplo(id: string): { nome: string; descricao: string; dados: QuadroDados } | null {

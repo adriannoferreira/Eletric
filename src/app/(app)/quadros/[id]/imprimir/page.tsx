@@ -19,6 +19,7 @@ import {
 import { Etiquetas } from "@/components/quadro/etiquetas";
 import { AutoImprimir, BotaoImprimir, FotosLocais } from "@/components/quadro/impressao-cliente";
 import { TabelaCompras } from "@/components/quadro/lista-compras";
+import { BlocoPadraoEquatorial } from "@/components/quadro/padrao-equatorial";
 import { BlocoDemanda, demandaDoQuadro, ListaSeguranca, TabelaCargas } from "@/components/quadro/projeto-blocos";
 import { QuadroVisual } from "@/components/quadro/quadro-visual";
 import { Unifilar } from "@/components/quadro/unifilar";
@@ -338,6 +339,7 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
     );
   } else {
     const lista = montarListaCompras(dados, cat, analise);
+    const demanda = demandaDoQuadro(dados);
     conteudo = (
       <>
         {cab("Projeto do quadro de distribuição")}
@@ -355,8 +357,13 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
           </div>
         </Secao>
         <Secao titulo="Demanda e entrada de energia">
-          <BlocoDemanda dados={dados} demanda={demandaDoQuadro(dados)} />
+          <BlocoDemanda dados={dados} demanda={demanda} />
         </Secao>
+        {demanda.equatorial && (
+          <Secao titulo="Padrão de entrada (Equatorial PA)">
+            <BlocoPadraoEquatorial padrao={demanda.equatorial} impressao />
+          </Secao>
+        )}
         <Secao titulo="Diagrama unifilar" quebra>
           <div className="[&_svg]:h-auto [&_svg]:w-full [&_svg]:text-black">
             <Unifilar dados={dados} analise={analise} selo={selo} />

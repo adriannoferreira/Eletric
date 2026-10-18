@@ -1,5 +1,6 @@
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import { concessionaria, orientacaoAterramento } from "@/lib/eletrica/concessionarias";
+import { concessionariaDoQuadro } from "@/lib/eletrica/equatorial";
 import { calcularDemanda, type Demanda } from "@/lib/eletrica/projeto";
 import { LOCAIS, type QuadroDados, TIPOS_CIRCUITO } from "@/lib/eletrica/tipos";
 import { peca } from "@/lib/eletrica/pecas";
@@ -20,12 +21,12 @@ export function demandaDoQuadro(q: QuadroDados): Demanda {
           ? Math.round(q.alimentacao.tensaoFN * Math.sqrt(3))
           : q.alimentacao.tensaoFF,
     },
-    q.projeto?.obra ?? {},
+    { ...(q.projeto?.obra ?? {}), concessionaria: concessionariaDoQuadro(q) },
   );
 }
 
 export function BlocoDemanda({ dados, demanda }: { dados: QuadroDados; demanda: Demanda }) {
-  const conc = dados.projeto ? concessionaria(dados.projeto.obra.concessionaria) : null;
+  const conc = concessionaria(concessionariaDoQuadro(dados));
   const atual = dados.alimentacao.tipo;
   return (
     <div className="space-y-3">
@@ -33,32 +34,59 @@ export function BlocoDemanda({ dados, demanda }: { dados: QuadroDados; demanda: 
         <Item r="Carga instalada" v={`${n(demanda.cargaInstaladaW / 1000, 2)} kW`} />
         <Item r="Demanda estimada" v={`${n(demanda.demandaKVA, 2)} kVA`} />
         <Item r="Categoria sugerida" v={CATEGORIA[demanda.categoria]} />
-        <Item r="Disjuntor geral (ref.)" v={demanda.disjuntorGeralA ? `${demanda.disjuntorGeralA} A` : "—"} />
+        {demanda.disjuntorPadraoA != null ? (
+          <Item r="Disjuntor do padrão (Tabela 2)" v={`${demanda.disjuntorPadraoA} A`} />
+        ) : (
+          <Item r="Disjuntor geral (ref.)" v={demanda.disjuntorGeralA ? `${demanda.disjuntorGeralA} A` : "—"} />
+        )}
       </div>
       <table className="w-full text-sm">
         <tbody className="[&_td]:py-1">
-          <tr>
-            <td className="text-muted">Iluminação + tomadas (TUG)</td>
-            <td className="text-right">
-              {n(demanda.iluminacaoTugW / 1000, 2)} kW × {n(demanda.fdIluminacaoTug, 2)}
-            </td>
-          </tr>
-          <tr>
-            <td className="text-muted">Aparelhos (TUE)</td>
-            <td className="text-right">
-              {n(demanda.aparelhosW / 1000, 2)} kW × {n(demanda.fdAparelhos, 2)}
-            </td>
-          </tr>
-          <tr>
-            <td className="text-muted">Ar-condicionado</td>
-            <td className="text-right">{n(demanda.arW / 1000, 2)} kW × 1</td>
-          </tr>
+          {demanda.equatorial ? (
+            demanda.equatorial.demanda.parcelas.map((p) => (
+              <tr key={p.grupo}>
+                <td className="text-muted">
+                  {p.grupo} <span className="text-xs">({p.ref})</span>
+                </td>
+                <td className="text-right">
+                  {n(p.cargaKW, 2)} kW × {p.fator} = {n(p.demandaKW, 2)} kW
+                </td>
+              </tr>
+            ))
+          ) : (
+            <>
+              <tr>
+                <td className="text-muted">Iluminação + tomadas (TUG)</td>
+                <td className="text-right">
+                  {n(demanda.iluminacaoTugW / 1000, 2)} kW × {n(demanda.fdIluminacaoTug, 2)}
+                </td>
+              </tr>
+              <tr>
+                <td className="text-muted">Aparelhos (TUE)</td>
+                <td className="text-right">
+                  {n(demanda.aparelhosW / 1000, 2)} kW × {n(demanda.fdAparelhos, 2)}
+                </td>
+              </tr>
+              <tr>
+                <td className="text-muted">Ar-condicionado</td>
+                <td className="text-right">{n(demanda.arW / 1000, 2)} kW × 1</td>
+              </tr>
+            </>
+          )}
+          {demanda.disjuntorPadraoA != null && (
+            <tr>
+              <td className="text-muted">Disjuntor geral do QDC (pela demanda, limitado ao do padrão)</td>
+              <td className="text-right">{demanda.disjuntorGeralA ? `${demanda.disjuntorGeralA} A` : "—"}</td>
+            </tr>
+          )}
           <tr>
             <td className="text-muted">Corrente de demanda por fase</td>
             <td className="text-right">{n(demanda.correnteA)} A</td>
           </tr>
           <tr>
-            <td className="text-muted">Seção mínima do alimentador do QDC (B1, 30 °C)</td>
+            <td className="text-muted">
+              {demanda.equatorial ? "Condutor padrão → QDC (Tabela 2, Cu 1 kV/90 °C)" : "Seção mínima do alimentador do QDC (B1, 30 °C)"}
+            </td>
             <td className="text-right">{demanda.secaoEntradaMm2 ? `${n(demanda.secaoEntradaMm2)} mm²` : "—"}</td>
           </tr>
         </tbody>
@@ -69,13 +97,11 @@ export function BlocoDemanda({ dados, demanda }: { dados: QuadroDados; demanda: 
           <span className="text-warn"> O quadro está configurado como {CATEGORIA[atual].toLowerCase()}.</span>
         )}
       </p>
-      {conc && (
-        <p className="text-sm">
-          <b>Concessionária:</b> {conc.nome} — {conc.norma}
-          {conc.normaConferir && <span className="text-warn"> (conferir nome/revisão da norma)</span>}
-          {conc.tensaoConferir && <span className="text-warn"> · tensão {conc.tensoes.join(" ou ")} V a conferir com a concessionária</span>}
-        </p>
-      )}
+      <p className="text-sm">
+        <b>Concessionária:</b> {conc.nome} — {conc.norma}
+        {conc.normaConferir && <span className="text-warn"> (conferir nome/revisão da norma)</span>}
+        {conc.tensaoConferir && <span className="text-warn"> · tensão {conc.tensoes.join(" ou ")} V a conferir com a concessionária</span>}
+      </p>
       <ul className="space-y-1 text-xs text-muted">
         {demanda.alertas.map((a, i) => (
           <li key={i} className={a.nivel === "erro" ? "text-danger" : a.nivel === "aviso" ? "text-warn" : ""}>
@@ -88,7 +114,7 @@ export function BlocoDemanda({ dados, demanda }: { dados: QuadroDados; demanda: 
 }
 
 export function ListaSeguranca({ dados }: { dados: QuadroDados }) {
-  const conc = concessionaria(dados.projeto?.obra.concessionaria ?? "outra");
+  const conc = concessionaria(concessionariaDoQuadro(dados));
   const comps = dados.componentes.map((c) => peca(c.pecaId)).filter(Boolean);
   const nDR = comps.filter((p) => p!.tipo === "dr").length;
   const dps = comps.find((p) => p!.tipo === "dps");
@@ -199,10 +225,13 @@ export function descreverObra(dados: QuadroDados, demanda: Demanda) {
     );
     if (p.obra.observacoes) linhas.push(`Observações: ${p.obra.observacoes}`);
   } else {
-    linhas.push("Quadro montado manualmente (sem dados de ambientes/concessionária).");
+    linhas.push(`Quadro montado manualmente (sem dados de ambientes); concessionária ${concessionaria(concessionariaDoQuadro(dados)).nome}.`);
   }
+  const eq = demanda.equatorial;
   linhas.push(
-    `Demanda estimada pelo app: carga instalada ${n(demanda.cargaInstaladaW / 1000, 2)} kW, demanda ${n(demanda.demandaKVA, 2)} kVA, categoria sugerida ${demanda.categoria}, corrente ${n(demanda.correnteA)} A, disjuntor geral de referência ${demanda.disjuntorGeralA ?? "?"} A (fatores genéricos — conferir na norma da concessionária).`,
+    eq && eq.categoria.linha
+      ? `Enquadramento oficial Equatorial Pará (NT.00001 rev. 09, item 6.2 e Tabela 2): carga instalada ${n(eq.demanda.cargaInstaladaKW, 2)} kW → ${eq.categoria.tipo} ${eq.categoria.tensao}; disjuntor do padrão ${eq.categoria.linha.disjuntorA} A; condutor do cliente ${eq.categoria.linha.condutorCliente} mm²; eletroduto ${eq.categoria.linha.eletrodutoAco}; aterramento aço cobreado ${eq.categoria.linha.aterramentoMm2} mm² + 1 haste Ø16×1500 mm. Demanda estimada ${n(eq.demanda.demandaKVA, 2)} kVA. Geral do QDC ${demanda.disjuntorGeralA ?? "?"} A.${eq.categoria.estudos.length ? ` Exige estudo: ${eq.categoria.estudos.join(" ")}` : ""}`
+      : `Demanda estimada pelo app: carga instalada ${n(demanda.cargaInstaladaW / 1000, 2)} kW, demanda ${n(demanda.demandaKVA, 2)} kVA, categoria sugerida ${demanda.categoria}, corrente ${n(demanda.correnteA)} A, disjuntor geral de referência ${demanda.disjuntorGeralA ?? "?"} A (fatores genéricos — conferir na norma da concessionária).`,
   );
   return linhas.join("\n");
 }

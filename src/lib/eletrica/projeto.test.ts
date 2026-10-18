@@ -134,8 +134,15 @@ describe("geração do quadro", () => {
     expect(dados.circuitos.every((c) => c.drId)).toBe(true);
     expect(dados.alimentacao.tipo).toBe("bifasico");
   });
-  it("exemplo trifásico usa rede 220/380", () => {
+  it("exemplo trifásico usa a rede 220/127 V da Equatorial PA", () => {
     const { dados } = gerarQuadro(EXEMPLOS[2].projeto());
+    expect(dados.alimentacao.tipo).toBe("trifasico");
+    expect(dados.alimentacao.tensaoFN).toBe(127);
+  });
+
+  it("rede 220/380 V (outras concessionárias) gera tensão F-N de 220 V", () => {
+    const p = EXEMPLOS[2].projeto();
+    const { dados } = gerarQuadro({ ...p, obra: { ...p.obra, tensoes: "220/380", concessionaria: "outra" } });
     expect(dados.alimentacao.tensaoFN).toBe(220);
   });
 });

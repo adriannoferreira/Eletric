@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { clientes, db, orcamentoItens, orcamentos, quadros } from "@/db";
+import { cargasEquatorial } from "@/lib/eletrica/equatorial";
 import { lerQuadro } from "@/lib/eletrica/tipos";
+import type { CategoriaCarga } from "@/lib/normas/equatorial-pa";
 import { catalogoComPrecos } from "@/lib/precos/servidor";
 import { normalizar } from "@/lib/precos/regras";
 import { NORMAS } from "@/lib/normas/equatorial-pa";
@@ -27,7 +29,7 @@ export type CargaImportada = {
   descricao: string;
   quantidade: number;
   potenciaW: number;
-  categoria: "iluminacao_tomadas" | "aparelho";
+  categoria: CategoriaCarga;
   ligacao: "FN" | "FF" | "3F";
 };
 
@@ -36,15 +38,9 @@ export async function cargasDoQuadro(id: number): Promise<CargaImportada[]> {
   const [q] = await db.select().from(quadros).where(eq(quadros.id, id));
   if (!q) return [];
   const dados = lerQuadro(q.dados);
-  return dados.circuitos
-    .filter((c) => c.potenciaW > 0)
-    .map((c) => ({
-      descricao: c.nome,
-      quantidade: 1,
-      potenciaW: c.potenciaW,
-      categoria: c.tipo === "tue" ? "aparelho" : "iluminacao_tomadas",
-      ligacao: c.ligacao,
-    }));
+  const circuitos = dados.circuitos.filter((c) => c.potenciaW > 0);
+  const cargas = cargasEquatorial(circuitos);
+  return circuitos.map((c, i) => ({ ...cargas[i], ligacao: c.ligacao }));
 }
 
 const Item = z.object({

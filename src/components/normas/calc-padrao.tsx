@@ -55,7 +55,7 @@ function carregar() {
   return null;
 }
 
-export function CalcPadraoEquatorial() {
+export function CalcPadraoEquatorial({ quadroInicial }: { quadroInicial?: number } = {}) {
   const [cargas, setCargas] = useState<Linha[]>([
     { id: novoId(), descricao: "Pontos de luz e tomada", quantidade: 20, potenciaW: 100, categoria: "iluminacao_tomadas", ligacao: "FN" },
   ]);
@@ -79,7 +79,14 @@ export function CalcPadraoEquatorial() {
       setEspeciais(salvo.especiais ?? []);
     }
     dadosCalculadora().then(setListas).catch(() => setListas({ quadros: [], clientes: [] }));
-  }, []);
+    if (quadroInicial) {
+      cargasDoQuadro(quadroInicial)
+        .then((lista) => {
+          if (lista.length) setCargas(lista.map((c) => ({ ...c, id: novoId() })));
+        })
+        .catch(() => {});
+    }
+  }, [quadroInicial]);
   useEffect(() => {
     try {
       localStorage.setItem(CHAVE, JSON.stringify({ cargas, especiais }));
