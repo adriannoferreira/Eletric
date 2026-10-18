@@ -1,4 +1,6 @@
-/** Fichas (guias) dos serviços do eletricista predial. Conteúdo completo na etapa 2. */
+/** Fichas (guias) dos serviços do eletricista predial. O conteúdo fica em guias-dados.ts. */
+
+import { GUIAS_DADOS } from "./guias-dados";
 
 export type CategoriaServico =
   | "Residencial"
@@ -34,7 +36,7 @@ export type Guia = {
   palavrasCatalogo?: string[];
 };
 
-export const GUIAS: Guia[] = [];
+export const GUIAS: Guia[] = GUIAS_DADOS;
 
 export const CATEGORIAS_SERVICO: CategoriaServico[] = [
   "Residencial",

@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Calculator,
   ClipboardList,
+  Stethoscope,
   FileText,
   Home,
   LayoutGrid,
@@ -12,6 +13,7 @@ import {
   Package,
   UserCog,
   Users,
+  Wrench,
 } from "lucide-react";
 
 export type ItemNav = { href: string; rotulo: string; icone: LucideIcon; /** Rótulo curto da barra inferior. */ curto?: string };
@@ -28,6 +30,8 @@ export const NAV_PRINCIPAL: ItemNav[] = [
 /** Demais módulos (no celular ficam em "Mais"). */
 export const NAV_SECUNDARIA: ItemNav[] = [
   { href: "/os", rotulo: "Ordens de serviço", icone: ClipboardList },
+  { href: "/servicos", rotulo: "Serviços", icone: Wrench },
+  { href: "/diagnostico", rotulo: "Diagnóstico IA", icone: Stethoscope },
   { href: "/clientes", rotulo: "Clientes", icone: Users },
   { href: "/vendas", rotulo: "Vendas & Marketing", icone: Megaphone },
   { href: "/calculadoras", rotulo: "Calculadoras", icone: Calculator },
