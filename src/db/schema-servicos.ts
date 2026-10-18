@@ -7,7 +7,7 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { catalogo, clientes, orcamentos, quadros } from "./schema";
+import { catalogo, clientes, equipamentos, orcamentos, quadros } from "./schema";
 
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "number" });
 
@@ -41,6 +41,8 @@ export const ordensServico = pgTable("ordens_servico", {
   /** Assinatura do cliente como data URL PNG. */
   assinatura: text("assinatura"),
   assinadoPor: text("assinado_por").notNull().default(""),
+  /** Análise das medições (redigida pela IA e/ou pelo eletricista) para o relatório de medições. */
+  analiseMedicoes: text("analise_medicoes").notNull().default(""),
   concluidaEm: timestamp("concluida_em", { withTimezone: true }),
   criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
   atualizadoEm: timestamp("atualizado_em", { withTimezone: true })
@@ -109,3 +111,29 @@ export type OrdemServico = typeof ordensServico.$inferSelect;
 export type Visita = typeof visitas.$inferSelect;
 export type OsMaterial = typeof osMateriais.$inferSelect;
 export type OsHora = typeof osHoras.$inferSelect;
+
+/** Medições elétricas feitas numa OS (tensão, corrente, isolamento, aterramento, DR...). */
+export const medicoes = pgTable("medicoes", {
+  id: serial("id").primaryKey(),
+  osId: integer("os_id")
+    .notNull()
+    .references(() => ordensServico.id, { onDelete: "cascade" }),
+  /** Onde foi medido (ex.: "QDC — entrada", "Circuito 3 — chuveiro", "Tomada cozinha"). */
+  ponto: text("ponto").notNull().default(""),
+  /** Chave do tipo de medição (src/lib/servicos/medicoes.ts). */
+  tipo: text("tipo").notNull(),
+  valor: numeric("valor", { precision: 14, scale: 4, mode: "number" }).notNull(),
+  unidade: text("unidade").notNull().default(""),
+  /** Parâmetros do tipo (tensão nominal, In do disjuntor, IΔn, tensão de ensaio...). */
+  parametros: jsonb("parametros").$type<Record<string, number>>().notNull().default({}),
+  /** Limites manuais (sobrescrevem os padrões do tipo). */
+  limiteMin: numeric("limite_min", { precision: 14, scale: 4, mode: "number" }),
+  limiteMax: numeric("limite_max", { precision: 14, scale: 4, mode: "number" }),
+  /** ok | aviso | nc (não conforme) */
+  resultado: text("resultado").notNull().default("ok"),
+  instrumentoId: integer("instrumento_id").references(() => equipamentos.id, { onDelete: "set null" }),
+  observacao: text("observacao").notNull().default(""),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Medicao = typeof medicoes.$inferSelect;

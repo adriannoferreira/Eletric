@@ -36,6 +36,13 @@
       "when": 1792339505266,
       "tag": "0004_servicos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792342034084,
+      "tag": "0005_medicoes",
+      "breakpoints": true
     }
   ]
 }

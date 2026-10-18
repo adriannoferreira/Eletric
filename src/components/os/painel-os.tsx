@@ -1,16 +1,17 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardCheck, Clock, ExternalLink, FileText, Image as ImageIcon, Images, MapPin, MessageCircle, MoreVertical, Navigation, Package, Pause, Pencil, Phone, Play, Receipt, RotateCcw, Save, Star, Trash2, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardCheck, Clock, ExternalLink, FileText, Gauge, Image as ImageIcon, Images, MapPin, MessageCircle, MoreVertical, Navigation, Package, Pause, Pencil, Phone, Play, Receipt, RotateCcw, Save, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { excluirOS, mudarStatusOS, salvarAssinatura, salvarCamposOS, salvarConfigServicos } from "@/app/(app)/os/actions";
 import { Badge, Campo } from "@/components/ui";
 import type { Cliente } from "@/db/schema";
-import type { OrdemServico, OsHora, OsMaterial, Visita } from "@/db/schema-servicos";
+import type { Medicao, OrdemServico, OsHora, OsMaterial, Visita } from "@/db/schema-servicos";
 import { linkWhatsApp, reais } from "@/lib/formato";
 import { dataCurta } from "@/lib/formato";
 import { fimGarantia, formatarDuracao, STATUS_OS, type StatusOS, totalMinutos } from "@/lib/servicos/os";
 import { PadAssinatura } from "./assinatura";
+import { type Instrumento, Medicoes } from "./medicoes";
 import { Checklist, Fotos, Horas, Materiais, Secao, Visitas } from "./secoes";
 
 type Props = {
@@ -26,6 +27,8 @@ type Props = {
   garantiaPadrao: number;
   nomeProfissional: string;
   orcamento: { id: number; token: string } | null;
+  medicoes: Medicao[];
+  instrumentos: Instrumento[];
 };
 
 export function PainelOS(p: Props) {
@@ -161,6 +164,10 @@ export function PainelOS(p: Props) {
 
       <Secao titulo="Fotos" icone={ImageIcon}>
         <Fotos osId={os.id} fotos={p.fotos} />
+      </Secao>
+
+      <Secao titulo="Medições elétricas" icone={Gauge}>
+        <Medicoes osId={os.id} titulo={os.titulo} medicoes={p.medicoes} instrumentos={p.instrumentos} analise={os.analiseMedicoes} />
       </Secao>
 
       <DadosPagamento os={os} />

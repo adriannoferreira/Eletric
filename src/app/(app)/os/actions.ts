@@ -8,17 +8,19 @@ import {
   clientes,
   configServicos,
   db,
-  type ItemChecklist,
+  medicoes,
   orcamentoItens,
   orcamentos,
   ordensServico,
   osFotos,
   osHoras,
   osMateriais,
+  type ItemChecklist,
   visitas,
 } from "@/db";
 import { totais } from "@/lib/orcamento";
 import { gerarLegendas } from "@/lib/servicos/legendas-ia";
+import { avaliarMedicao } from "@/lib/servicos/medicoes";
 import { CHECKLIST_PADRAO, criarChecklist } from "@/lib/servicos/checklists";
 import { guiaPorChave } from "@/lib/servicos/guias";
 import { deDataHoraLocal, podeMudar, type StatusOS } from "@/lib/servicos/os";
@@ -366,4 +368,38 @@ export async function legendarFotosComIA(osId: number) {
   }
   revalidatePath(`/os/${osId}`);
   return { erro: null, feitas };
+}
+
+const NovaMedicao = z.object({
+  ponto: z.string().trim().max(200).default(""),
+  tipo: z.string().min(1).max(40),
+  valor: z.number().finite(),
+  unidade: z.string().max(20).default(""),
+  parametros: z.record(z.string(), z.number().finite()).default({}),
+  limiteMin: z.number().finite().nullable().default(null),
+  limiteMax: z.number().finite().nullable().default(null),
+  instrumentoId: z.number().int().positive().nullable().default(null),
+  observacao: z.string().trim().max(500).default(""),
+});
+
+export async function adicionarMedicao(osId: number, dados: z.input<typeof NovaMedicao>) {
+  const m = NovaMedicao.safeParse(dados);
+  if (!m.success) return "Confira o valor medido.";
+  const { resultado } = avaliarMedicao(m.data.tipo, m.data.valor, m.data.parametros, m.data.limiteMin, m.data.limiteMax);
+  await db.insert(medicoes).values({ osId, ...m.data, resultado });
+  revalidatePath(`/os/${osId}`);
+  return null;
+}
+
+export async function excluirMedicao(osId: number, medicaoId: number) {
+  await db.delete(medicoes).where(and(eq(medicoes.id, medicaoId), eq(medicoes.osId, osId)));
+  revalidatePath(`/os/${osId}`);
+}
+
+export async function salvarAnaliseMedicoes(osId: number, texto: string) {
+  await db
+    .update(ordensServico)
+    .set({ analiseMedicoes: texto.slice(0, 20_000) })
+    .where(eq(ordensServico.id, osId));
+  revalidatePath(`/os/${osId}`);
 }

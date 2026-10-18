@@ -6,6 +6,8 @@ import {
   clientes,
   configServicos,
   db,
+  equipamentos,
+  medicoes,
   orcamentos,
   ordensServico,
   osFotos,
@@ -23,7 +25,7 @@ export default async function OSDetalhePage({ params }: PageProps<"/os/[id]">) {
   const [os] = await db.select().from(ordensServico).where(eq(ordensServico.id, id));
   if (!os) notFound();
 
-  const [[cliente], vis, outras, mats, hrs, fotos, cat, [cfg], [p], orc] = await Promise.all([
+  const [[cliente], vis, outras, mats, hrs, fotos, cat, [cfg], [p], orc, meds, instrs] = await Promise.all([
     db.select().from(clientes).where(eq(clientes.id, os.clienteId)),
     db.select().from(visitas).where(eq(visitas.osId, id)),
     db
@@ -47,6 +49,18 @@ export default async function OSDetalhePage({ params }: PageProps<"/os/[id]">) {
     os.orcamentoId
       ? db.select({ id: orcamentos.id, token: orcamentos.tokenPublico }).from(orcamentos).where(eq(orcamentos.id, os.orcamentoId))
       : Promise.resolve([]),
+    db.select().from(medicoes).where(eq(medicoes.osId, id)).orderBy(asc(medicoes.id)),
+    db
+      .select({
+        id: equipamentos.id,
+        nome: equipamentos.nome,
+        marca: equipamentos.marca,
+        modelo: equipamentos.modelo,
+        proximaVerificacao: equipamentos.proximaVerificacao,
+      })
+      .from(equipamentos)
+      .where(eq(equipamentos.categoria, "instrumento"))
+      .orderBy(asc(equipamentos.nome)),
   ]);
   if (!cliente) notFound();
 
@@ -64,6 +78,8 @@ export default async function OSDetalhePage({ params }: PageProps<"/os/[id]">) {
       garantiaPadrao={cfg?.garantiaPadraoDias ?? 90}
       nomeProfissional={p?.nome || p?.empresa || "seu eletricista"}
       orcamento={orc[0] ?? null}
+      medicoes={meds}
+      instrumentos={instrs}
     />
   );
 }
