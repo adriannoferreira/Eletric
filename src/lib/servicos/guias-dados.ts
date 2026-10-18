@@ -9,7 +9,7 @@ import type { Guia } from "./tipos-guia";
 const NR10 = "Desenergizar, bloquear e sinalizar o circuito; testar ausência de tensão antes de tocar (NR-10)";
 const NR35 = "Acima de 2 m: escada em bom estado, apoio firme e cinto/talabarte quando aplicável (NR-35)";
 const EPI_BASICO = ["Luvas isolantes adequadas à tensão", "Óculos de proteção", "Calçado de segurança sem partes metálicas"];
-const FERRAMENTAS_BASICAS = ["Multímetro (CAT III)", "Detector de tensão", "Alicates universal, corte e desencapador", "Chaves de fenda e Phillips isoladas"];
+const FERRAMENTAS_BASICAS = [...EPI_BASICO, "Multímetro (CAT III)", "Detector de tensão", "Alicates universal, corte e desencapador", "Chaves de fenda e Phillips isoladas"];
 
 export const GUIAS_DADOS: Guia[] = [
   /* ---------------- Residencial ---------------- */
