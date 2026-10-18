@@ -13,12 +13,20 @@ import {
 } from "@/lib/eletrica/calculo";
 import { DESCRICAO_METODO, type Metodo, METODOS, QUEDA_MAX_TERMINAL, SECOES } from "@/lib/eletrica/tabelas";
 import { LIGACOES, type Ligacao, TIPOS_CIRCUITO, type TipoCircuito } from "@/lib/eletrica/tipos";
+import { CalcBTU, CalcConsumo, CalcEletroduto, CalcLux, CalcMotor, CalcSolar, CalcVE } from "./extras";
 
 const ABAS = [
   { id: "cabo", rotulo: "Bitola do cabo" },
   { id: "corrente", rotulo: "Corrente × potência" },
   { id: "queda", rotulo: "Queda de tensão" },
   { id: "disjuntor", rotulo: "Disjuntor" },
+  { id: "btu", rotulo: "Ar-condicionado (BTU)" },
+  { id: "lux", rotulo: "Iluminação" },
+  { id: "consumo", rotulo: "Consumo / conta" },
+  { id: "motor", rotulo: "Motores e bombas" },
+  { id: "solar", rotulo: "Solar" },
+  { id: "ve", rotulo: "Carro elétrico" },
+  { id: "eletroduto", rotulo: "Eletroduto" },
 ] as const;
 
 const fmt = (v: number, d = 2) => (Number.isFinite(v) ? v.toLocaleString("pt-BR", { maximumFractionDigits: d }) : "—");
@@ -39,11 +47,18 @@ export function Calculadoras() {
       {aba === "corrente" && <CalcCorrente />}
       {aba === "queda" && <CalcQueda />}
       {aba === "disjuntor" && <CalcDisjuntor />}
-      <p className="text-xs text-muted">
+      {aba === "btu" && <CalcBTU />}
+      {aba === "lux" && <CalcLux />}
+      {aba === "consumo" && <CalcConsumo />}
+      {aba === "motor" && <CalcMotor />}
+      {aba === "solar" && <CalcSolar />}
+      {aba === "ve" && <CalcVE />}
+      {aba === "eletroduto" && <CalcEletroduto />}
+      {["cabo", "corrente", "queda", "disjuntor"].includes(aba) && <p className="text-xs text-muted">
         Cobre, isolação PVC 70 °C, Tabelas 36, 40 e 42 da NBR 5410:2004 (versão corrigida 2008). Queda de tensão
         pelo método simplificado (resistência a 70 °C, sem reatância). Confira sempre a edição vigente da norma e o
         catálogo do fabricante.
-      </p>
+      </p>}
     </div>
   );
 }
