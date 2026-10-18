@@ -67,7 +67,7 @@ export function QuadroVisual({
                     key={`v${p}`}
                     type="button"
                     disabled={!aoTocarVazio}
-                    onClick={() => aoTocarVazio?.(f, p)}
+                    onClick={aoTocarVazio && (() => aoTocarVazio(f, p))}
                     className={`absolute top-[8%] grid place-items-center rounded-[3px] border border-dashed border-[#9aa1ab] bg-white/25 text-[#6b7280] ${
                       aoTocarVazio ? "hover:border-[#f59e0b] hover:bg-[#fde68a]/50 hover:text-[#92400e]" : ""
                     }`}
@@ -90,7 +90,7 @@ export function QuadroVisual({
                       key={c.id}
                       type="button"
                       disabled={!aoTocarPeca}
-                      onClick={() => aoTocarPeca?.(c.id)}
+                      onClick={aoTocarPeca && (() => aoTocarPeca(c.id))}
                       className="absolute top-0 flex flex-col items-center"
                       style={{ left: c.posicao * m, width: modulosOcupados(p) * m }}
                       aria-label={p.nome}

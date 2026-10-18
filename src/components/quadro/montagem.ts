@@ -77,7 +77,15 @@ export function adicionarComponente(
   const lugar = primeiroEspaco(q, modulosOcupados(p), onde);
   if (!lugar) return null;
   const id = novoId("k");
-  const fases = p.tipo === "dps" ? fasesSugeridas(q, 1) : fasesSugeridas(q, Math.min(p.polos, 3));
+  let fases: Fase[];
+  if (p.tipo === "dps") {
+    // Um DPS por fase: escolhe a primeira fase que ainda não tem DPS.
+    const comDPS = new Set(q.componentes.filter((c) => peca(c.pecaId)?.tipo === "dps").flatMap((c) => c.fases));
+    const livre = fasesDisponiveis(q.alimentacao).find((f) => !comDPS.has(f));
+    fases = livre ? [livre] : [];
+  } else {
+    fases = fasesSugeridas(q, Math.min(p.polos, 3));
+  }
   const comp: Componente = {
     id,
     pecaId,
