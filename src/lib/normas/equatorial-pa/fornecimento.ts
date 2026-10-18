@@ -153,7 +153,6 @@ export interface ResultadoCategoria {
 }
 
 const ordem: TipoLigacao[] = ["monofasico", "bifasico", "trifasico"];
-const maior = (a: TipoLigacao, b: TipoLigacao) => (ordem.indexOf(a) >= ordem.indexOf(b) ? a : b);
 
 /**
  * Enquadra a unidade consumidora (área urbana, Pará) no tipo de ligação e na faixa da TABELA 2.

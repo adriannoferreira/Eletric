@@ -1,4 +1,5 @@
 import type { Perfil } from "@/db/schema";
+import { BLOCO_PROMPT_EQUATORIAL } from "@/lib/normas/equatorial-pa/prompt";
 
 export type Assistente = "eletrica" | "vendas";
 
@@ -16,7 +17,7 @@ Como responder:
 - Segurança em primeiro lugar: lembre de desenergizar, testar ausência de tensão, bloquear e sinalizar (NR-10) sempre que o serviço envolver risco. Nunca oriente trabalho em rede da concessionária ou em média tensão para quem não é habilitado.
 - Seja honesto sobre incerteza: se não tiver certeza do número exato de uma tabela ou se a norma pode ter sido revisada, diga isso e recomende conferir a edição vigente da norma ou o catálogo do fabricante. Não invente números de tabela.
 - Quando o serviço exigir responsável técnico (ART/TRT) ou projeto assinado, avise.
-- Quando fizer sentido, dê uma dica de como explicar o serviço ao cliente ou de como cobrar por ele.`;
+- Quando fizer sentido, dê uma dica de como explicar o serviço ao cliente ou de como cobrar por ele.${BLOCO_PROMPT_EQUATORIAL}`;
 
 export function promptVendas(perfil?: Perfil | null) {
   const sobre = perfil

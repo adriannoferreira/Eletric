@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Bot,
   Boxes,
   CalendarDays,
@@ -35,6 +36,7 @@ export const NAV_SECUNDARIA: ItemNav[] = [
   { href: "/clientes", rotulo: "Clientes", icone: Users },
   { href: "/vendas", rotulo: "Vendas & Marketing", icone: Megaphone },
   { href: "/calculadoras", rotulo: "Calculadoras", icone: Calculator },
+  { href: "/normas", rotulo: "Normas Equatorial", icone: BookOpen },
   { href: "/equipamentos", rotulo: "Equipamentos", icone: Boxes },
   { href: "/catalogo", rotulo: "Catálogo de preços", icone: Package },
   { href: "/perfil", rotulo: "Meu perfil", icone: UserCog },
