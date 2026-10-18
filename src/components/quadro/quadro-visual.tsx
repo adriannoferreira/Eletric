@@ -43,7 +43,8 @@ export function QuadroVisual({
   const linhas = linhasDoModelo(dados.modelo);
   const skin = linhaDoModelo(dados.modelo);
   const orientacao = orientacaoDoModelo(dados.modelo);
-  const lateral = orientacao === "vertical";
+  // Barras laterais só em caixas DIN verticais (NEMA: barras embaixo do barramento).
+  const lateral = orientacao === "vertical" && dados.modelo.padrao === "DIN";
   const mapa = ocupacao(dados);
   const comEspelho = vista !== "montagem";
   const podeTocar = vista !== "porta";
@@ -64,7 +65,7 @@ export function QuadroVisual({
 
   const destaqueDe = (c: Componente): DestaquePeca => (selecionado === c.id ? "selecionado" : (destaques?.[c.id] ?? null));
   // Espelho: só a faixa das alavancas aparece (≈ 24% a 70% da altura da peça).
-  const faixaTopo = altura * 0.24;
+  const faixaTopo = altura * 0.17;
   const faixaBase = altura * 0.7;
   const corEspelho = skin.corEspelho;
 
@@ -259,7 +260,7 @@ export function QuadroVisual({
     );
 
   const conteudoLinhas = (
-    <div className="flex flex-col" style={{ gap: (comEspelho ? 30 : 24) * escala }}>
+    <div className="flex flex-col" style={{ gap: (comEspelho ? 30 : 34) * escala }}>
       {linhas.map((l, f) => (l.auxiliar ? linhaDIN(f) : null))}
       {blocoNEMA}
       {linhas.map((l, f) => (l.padrao === "DIN" && !l.auxiliar ? linhaDIN(f) : null))}
