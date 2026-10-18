@@ -170,6 +170,52 @@ export const ProjetoObraSchema = z.object({
 });
 export type ProjetoObra = z.infer<typeof ProjetoObraSchema>;
 
+// ---------------------------------------------------------------------------
+// Inspeção (NBR 5410 seção 7) e laudo
+// ---------------------------------------------------------------------------
+
+export const RespostaInspecaoSchema = z.object({
+  itemId: z.string(),
+  status: z.enum(["ok", "nc", "na"]).nullable().catch(null),
+  valor: z.number().nullable().catch(null),
+  valor2: z.number().nullable().catch(null),
+  obs: z.string().catch(""),
+});
+export type RespostaInspecao = z.infer<typeof RespostaInspecaoSchema>;
+
+export const InspecaoSchema = z.object({
+  id: z.string().catch(() => novoId("i")),
+  data: z.string().catch(() => new Date().toISOString()),
+  responsavel: z.string().catch(""),
+  /** Ids (texto) dos equipamentos/instrumentos usados. */
+  instrumentos: z.array(z.string()).catch([]),
+  tensaoEnsaioV: z.number().catch(500),
+  respostas: z.array(RespostaInspecaoSchema).catch([]),
+  analiseIA: z.string().nullable().catch(null),
+});
+export type Inspecao = z.infer<typeof InspecaoSchema>;
+
+export const NaoConformidadeSchema = z.object({
+  descricao: z.string().catch(""),
+  risco: z.enum(["alto", "medio", "baixo"]).catch("medio"),
+  recomendacao: z.string().catch(""),
+});
+export type NaoConformidade = z.infer<typeof NaoConformidadeSchema>;
+
+export const LaudoSchema = z.object({
+  inspecaoId: z.string().nullable().catch(null),
+  objetivo: z.string().catch(""),
+  analise: z.string().catch(""),
+  naoConformidades: z.array(NaoConformidadeSchema).catch([]),
+  conclusao: z.enum(["conforme", "ressalvas", "nao_conforme"]).catch("ressalvas"),
+  textoConclusao: z.string().catch(""),
+  periodicidade: z.string().catch(""),
+  /** Nº da ART/TRT informado pelo profissional (nunca gerado pelo app). */
+  art: z.string().catch(""),
+  atualizadoEm: z.string().catch(""),
+});
+export type Laudo = z.infer<typeof LaudoSchema>;
+
 export const QuadroDadosSchema = z.object({
   versao: z.number().catch(VERSAO_QUADRO),
   alimentacao: AlimentacaoSchema.catch(AlimentacaoSchema.parse({})),
@@ -182,6 +228,9 @@ export const QuadroDadosSchema = z.object({
   memorial: z.object({ texto: z.string(), geradoEm: z.string() }).nullable().catch(null),
   /** Itens da lista de compras já comprados (chaves de `montarListaCompras`). */
   compras: z.array(z.string()).catch([]),
+  /** Histórico de inspeções (mais recente por último). */
+  inspecoes: z.array(InspecaoSchema).catch([]),
+  laudo: LaudoSchema.nullable().catch(null),
 });
 export type QuadroDados = z.infer<typeof QuadroDadosSchema>;
 
@@ -206,6 +255,8 @@ export function novoQuadro(
     projeto: null,
     memorial: null,
     compras: [],
+    inspecoes: [],
+    laudo: null,
   };
 }
 

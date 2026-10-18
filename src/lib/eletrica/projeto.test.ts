@@ -128,3 +128,38 @@ describe("geração do quadro", () => {
     expect(dados.alimentacao.tensaoFN).toBe(220);
   });
 });
+
+import { dentroDoLimite, faixaTensao, gerarChecklist, novaInspecao, resultadoItem, resumirInspecao } from "./inspecao";
+
+describe("inspeção — NBR 5410 seção 7", () => {
+  const q = quadroExemplo("casa-bi")!.dados;
+  const itens = gerarChecklist(q);
+  it("gera itens gerais, por circuito, por DR e por DPS", () => {
+    expect(itens.filter((i) => i.id.startsWith("ens:iso:"))).toHaveLength(q.circuitos.length);
+    expect(itens.filter((i) => i.id.startsWith("ens:dr-botao:")).length).toBeGreaterThan(0);
+    expect(itens.filter((i) => i.id.startsWith("vis:dps:"))).toHaveLength(2);
+    expect(itens.some((i) => i.id === "ens:v-ff:RS")).toBe(true);
+    expect(itens.some((i) => i.id === "ens:sequencia")).toBe(false); // bifásico
+  });
+  it("limites", () => {
+    expect(dentroDoLimite(0.3, { tipo: "min", valor: 0.5 })).toBe(false);
+    expect(dentroDoLimite(125, faixaTensao(127))).toBe(true);
+    expect(dentroDoLimite(240, faixaTensao(220))).toBe(false);
+  });
+  it("medição fora do limite vira não conforme; status manual prevalece", () => {
+    const iso = itens.find((i) => i.id.startsWith("ens:iso:"))!;
+    expect(resultadoItem(iso, { itemId: iso.id, status: null, valor: 0.2, valor2: null, obs: "" })).toBe("nc");
+    expect(resultadoItem(iso, { itemId: iso.id, status: null, valor: 50, valor2: null, obs: "" })).toBe("ok");
+    expect(resultadoItem(iso, { itemId: iso.id, status: "na", valor: 0.2, valor2: null, obs: "" })).toBe("na");
+    const dr = itens.find((i) => i.id.startsWith("ens:dr-medido:"))!;
+    expect(resultadoItem(dr, { itemId: dr.id, status: null, valor: 22, valor2: 350, obs: "" })).toBe("nc");
+  });
+  it("resumo: aprovado só com tudo respondido e sem não conformidades", () => {
+    const insp = novaInspecao();
+    expect(resumirInspecao(itens, insp).resultado).toBe("incompleta");
+    insp.respostas = itens.map((i) => ({ itemId: i.id, status: "ok" as const, valor: null, valor2: null, obs: "" }));
+    expect(resumirInspecao(itens, insp).resultado).toBe("aprovado");
+    insp.respostas[0].status = "nc";
+    expect(resumirInspecao(itens, insp).resultado).toBe("pendencias");
+  });
+});
