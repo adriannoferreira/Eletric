@@ -130,7 +130,8 @@ export function adicionarComponente(
   return { quadro: { ...q, componentes: [...q.componentes, comp] }, id };
 }
 
-export const COR_FASE: Record<Fase, string> = { R: "#dc2626", S: "#111827", T: "#9ca3af" };
+/** Cores padrão das fases (cabos preto, vermelho e branco — editáveis em Ligações). */
+export const COR_FASE: Record<Fase, string> = { R: "#111827", S: "#dc2626", T: "#e2e8f0" };
 
 /** Número do circuito (ordem na lista), para etiquetar o disjuntor como no quadro real. */
 export function numeroCircuito(q: QuadroDados, circuitoId: string | null) {

@@ -3,6 +3,8 @@
  * buscando os preços no catálogo do eletricista por nome normalizado /
  * palavras-chave. Itens sem correspondência ficam com preço 0 e marcados.
  */
+import { capacidadeTotal } from "./caixas";
+import { listaMateriaisCompleta } from "./ligacoes";
 import { analisarQuadro, type AnaliseQuadro, listaMateriais } from "./calculo";
 import { peca } from "./pecas";
 import type { QuadroDados } from "./tipos";
@@ -125,13 +127,13 @@ export function itensOrcamentoDoQuadro(
 
   // Materiais — mesma lista do construtor; peças são casadas pelo id do catálogo de peças.
   const nomeParaPeca = new Map(dados.componentes.map((c) => [peca(c.pecaId)?.nome ?? "", c.pecaId]));
-  for (const m of listaMateriais(dados, analise)) {
+  for (const m of listaMateriaisCompleta(dados, analise)) {
     const pecaId = nomeParaPeca.get(m.descricao);
     itens.push(item(catalogo, buscaMaterial(m.descricao, pecaId), "material", m.descricao, m.quantidade, m.unidade));
   }
 
   // Mão de obra
-  const total = dados.modelo.fileiras * dados.modelo.modulosPorFileira;
+  const total = capacidadeTotal(dados.modelo);
   itens.push(
     item(
       catalogo,

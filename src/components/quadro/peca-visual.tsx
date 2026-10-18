@@ -15,6 +15,7 @@ export function PecaVisual({
   fases,
   geral,
   destaque,
+  coresFase = COR_FASE,
 }: {
   peca: Peca;
   m: number;
@@ -22,6 +23,8 @@ export function PecaVisual({
   fases: Fase[];
   geral?: boolean;
   destaque?: DestaquePeca;
+  /** Cor de cada fase (cores dos cabos configuradas no quadro). */
+  coresFase?: Record<Fase, string>;
 }) {
   const largura = peca.modulos * m;
   const polos = peca.tipo === "dps" ? 1 : peca.polos;
@@ -51,7 +54,7 @@ export function PecaVisual({
       {/* Faixa de fases no topo (indica o pente/barramento ligado) */}
       <div className="flex h-[5%] min-h-1">
         {Array.from({ length: polos }).map((_, i) => (
-          <div key={i} style={{ width: larguraPolo, background: fases[i] ? COR_FASE[fases[i]] : "#cbd5e1" }} />
+          <div key={i} style={{ width: larguraPolo, background: fases[i] ? coresFase[fases[i]] : "#cbd5e1" }} />
         ))}
       </div>
       {/* Bornes superiores */}

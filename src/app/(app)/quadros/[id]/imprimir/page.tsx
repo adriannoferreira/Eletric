@@ -1,3 +1,4 @@
+import { capacidadeTotal, descreverModelo } from "@/lib/eletrica/caixas";
 import { asc, eq } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -225,8 +226,8 @@ export default async function ImprimirPage({ params, searchParams }: PageProps<"
           <Secao titulo="5. Descrição da instalação">
             <p className="text-sm">
               Alimentação {dados.alimentacao.tipo} {dados.alimentacao.tensaoFN}/{dados.alimentacao.tensaoFF} V, esquema de aterramento{" "}
-              {dados.alimentacao.esquema}. Quadro de distribuição de {dados.modelo.instalacao} com {dados.modelo.fileiras * dados.modelo.modulosPorFileira}{" "}
-              módulos DIN, {analise.circuitos.length} circuitos terminais, potência instalada de{" "}
+              {dados.alimentacao.esquema}. Quadro de distribuição ({descreverModelo(dados.modelo)}) com {capacidadeTotal(dados.modelo)}{" "}
+              {dados.modelo.padrao === "NEMA" ? "posições" : "módulos DIN"}, {analise.circuitos.length} circuitos terminais, potência instalada de{" "}
               {(analise.potenciaTotalW / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kW.
             </p>
             <div className="mt-2">

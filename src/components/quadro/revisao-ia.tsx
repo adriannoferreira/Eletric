@@ -1,5 +1,6 @@
 "use client";
 
+import { descreverModelo } from "@/lib/eletrica/caixas";
 import { Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { lerStream, TextoIA } from "@/components/texto-ia";
@@ -13,7 +14,7 @@ export function descreverQuadro(nome: string, q: QuadroDados, a: AnaliseQuadro) 
   const linhas: string[] = [
     `Quadro: ${nome}`,
     `Fornecimento: ${al.tipo}, ${al.tensaoFN} V F-N / ${al.tensaoFF} V F-F, esquema ${al.esquema}.`,
-    `Caixa: ${q.modelo.fileiras} fileira(s) × ${q.modelo.modulosPorFileira} módulos (${q.modelo.instalacao}). Ocupados ${a.modulosUsados}/${a.modulosTotais}.`,
+    `Caixa: ${descreverModelo(q.modelo)}. Ocupados ${a.modulosUsados}/${a.modulosTotais}.`,
     "",
     "Peças no quadro:",
     ...q.componentes.map((c) => {

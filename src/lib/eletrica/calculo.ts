@@ -3,6 +3,7 @@
  * Funções puras — sem acesso a banco ou UI — para poderem ser testadas e
  * reaproveitadas pelo construtor de quadros e pelas calculadoras.
  */
+import { capacidadeTotal, descreverModelo } from "./caixas";
 import {
   capacidadeTabela36,
   CORRENTES_NOMINAIS,
@@ -462,7 +463,7 @@ export function analisarQuadro(q: QuadroDados): AnaliseQuadro {
   const potenciaTotalW = q.circuitos.reduce((s, c) => s + c.potenciaW, 0);
 
   // Ocupação do trilho
-  const modulosTotais = q.modelo.fileiras * q.modelo.modulosPorFileira;
+  const modulosTotais = capacidadeTotal(q.modelo);
   const modulosUsados = componentes.reduce((s, x) => s + (x.p ? modulosOcupados(x.p) : 0), 0);
   const modulosLivres = Math.max(0, modulosTotais - modulosUsados);
   const reservaExigida = reservaMinima(q.circuitos.length);
@@ -593,9 +594,8 @@ export function listaMateriais(q: QuadroDados, analise = analisarQuadro(q)): Ite
     if (p) itens.push({ descricao: p.nome, quantidade: n, unidade: "un" });
   }
 
-  const totalMod = q.modelo.fileiras * q.modelo.modulosPorFileira;
   itens.push({
-    descricao: `Quadro de distribuição de ${q.modelo.instalacao} — ${totalMod} módulos DIN`,
+    descricao: `Quadro de distribuição — ${descreverModelo(q.modelo)}`,
     quantidade: 1,
     unidade: "un",
   });

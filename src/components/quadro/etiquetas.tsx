@@ -1,5 +1,6 @@
 "use client";
 
+import { linhasDoModelo } from "@/lib/eletrica/caixas";
 import { useState } from "react";
 import type { AnaliseQuadro } from "@/lib/eletrica/calculo";
 import { modulosOcupados, peca } from "@/lib/eletrica/pecas";
@@ -72,7 +73,8 @@ export function Etiquetas({
   const curto = (s: string) => s.replace(/^(Iluminação|Tomadas)\s*\d*\s*—\s*/, (_, t) => `${t === "Iluminação" ? "Ilum." : "TUG"} `).slice(0, 22);
 
   // Faixa por fileira: peças em ordem, buracos viram "RESERVA".
-  const fileiras = Array.from({ length: dados.modelo.fileiras }, (_, f) => {
+  const linhasQ = linhasDoModelo(dados.modelo);
+  const fileiras = Array.from({ length: linhasQ.length }, (_, f) => {
     const pecas = dados.componentes
       .filter((c) => c.fileira === f)
       .map((c) => ({ c, p: peca(c.pecaId) }))
@@ -95,7 +97,7 @@ export function Etiquetas({
       celulas.push({ largura: w, texto, tipo: p!.tipo });
       pos = c.posicao + w;
     }
-    reserva(dados.modelo.modulosPorFileira - pos);
+    reserva(linhasQ[f].modulos - pos);
     return emTiras(celulas);
   });
 
